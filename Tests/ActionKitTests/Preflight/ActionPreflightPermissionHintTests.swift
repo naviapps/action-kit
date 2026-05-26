@@ -1,0 +1,105 @@
+import XCTest
+
+@testable import ActionKit
+
+final class ActionPreflightPermissionHintTests: XCTestCase {
+  func testPlansForActionKindsUseDescriptorExampleActions() throws {
+    for kind in ActionKind.allCases {
+      let action = try XCTUnwrap(Self.sampleAction(for: kind), "\(kind) should have sample action")
+
+      XCTAssertEqual(ActionPreflight.plan(forKind: kind), ActionPreflight.plan(for: action))
+    }
+  }
+
+  func testPermissionsForActionKindsDoNotRequireConstructedActions() {
+    let cases: [(kind: ActionKind, permissions: ActionPermissionSet)] = [
+      (.windowPlacement, .init(primary: [.accessibility], fallback: [])),
+      (.keyboardShortcut, .init(primary: [.accessibility], fallback: [])),
+      (.openURL, .init(primary: [], fallback: [])),
+      (.launchApplication, .init(primary: [], fallback: [])),
+      (.runShortcut, .init(primary: [], fallback: [])),
+      (.openFolder, .init(primary: [], fallback: [])),
+      (.showDesktop, .init(primary: [.accessibility, .automation], fallback: [.accessibility])),
+      (.windowMove, .init(primary: [.accessibility], fallback: [])),
+    ]
+
+    for expectation in cases {
+      XCTAssertEqual(
+        ActionPreflight.permissions(forKind: expectation.kind),
+        expectation.permissions,
+        "Unexpected permissions for \(expectation.kind)"
+      )
+    }
+  }
+
+  func testPermissionHintsUseActionSpecificReasons() {
+    XCTAssertEqual(
+      ActionPreflight.permissionHints(for: .copy),
+      [.init(permission: .accessibility, reason: .accessibilityKeyEvent)]
+    )
+    XCTAssertEqual(
+      ActionPreflight.permissionHints(forKind: ActionKind.windowMaximize),
+      [.init(permission: .accessibility, reason: .accessibilityWindowing)]
+    )
+    XCTAssertEqual(
+      ActionPreflight.permissionHints(forKind: ActionKind.toggleAppearance),
+      [.init(permission: .automation, reason: .automationAppleEvents)]
+    )
+    XCTAssertEqual(
+      ActionPreflight.permissionHints(forKind: ActionKind.captureScreenFull),
+      [.init(permission: .screenRecording, reason: .screenRecordingCapture)]
+    )
+    XCTAssertTrue(ActionPreflight.permissionHints(for: .launchApplication("")).isEmpty)
+  }
+
+  func testPermissionHintsForActionKindsDoNotRequireConstructedActions() {
+    let cases: [(kind: ActionKind, hints: [ActionPermissionHint])] = [
+      (.windowMove, [.init(permission: .accessibility, reason: .accessibilityWindowing)]),
+      (.keyboardShortcut, [.init(permission: .accessibility, reason: .accessibilityKeyEvent)]),
+      (.runShortcut, []),
+    ]
+
+    for expectation in cases {
+      XCTAssertEqual(
+        ActionPreflight.permissionHints(forKind: expectation.kind),
+        expectation.hints,
+        "Unexpected permission hints for \(expectation.kind)"
+      )
+    }
+  }
+
+  func testPermissionHintsUseExecutionPlanOrder() {
+    XCTAssertEqual(
+      ActionPreflight.permissionHints(forKind: ActionKind.showDesktop),
+      [
+        .init(permission: .accessibility, reason: .accessibility),
+        .init(permission: .automation, reason: .automationAppleEvents),
+      ]
+    )
+  }
+
+  func testPermissionHintsUseStablePermissionOrderWithinStep() {
+    let plan = ActionPlan(steps: [
+      .init(
+        method: .keyEvent(virtualKeyCode: 0),
+        requiredPermissions: [.screenRecording, .automation, .accessibility]
+      )
+    ])
+
+    XCTAssertEqual(
+      ActionPreflight.permissionHints(for: plan),
+      [
+        .init(permission: .accessibility, reason: .accessibilityKeyEvent),
+        .init(permission: .automation, reason: .automationAppleEvents),
+        .init(permission: .screenRecording, reason: .screenRecordingCapture),
+      ]
+    )
+  }
+
+  private static func sampleAction(for kind: ActionKind) -> Action? {
+    if let exampleInput = kind.inputDescriptor.exampleInput {
+      return kind.action(input: exampleInput)
+    }
+    return kind.action()
+  }
+}
