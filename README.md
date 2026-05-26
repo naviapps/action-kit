@@ -80,7 +80,7 @@ history by itself.
 Add this package to your Swift Package dependencies:
 
 ```swift
-.package(url: "https://github.com/naviapps/action-kit.git", from: "0.1.0")
+.package(url: "https://github.com/naviapps/action-kit.git", from: "1.0.0")
 ```
 
 Then add the product that matches your use case:
