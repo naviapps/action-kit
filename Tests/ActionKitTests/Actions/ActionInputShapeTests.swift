@@ -1,20 +1,8 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionInputShapeTests: XCTestCase {
-  func testActionInputShapeCasesAreStable() {
-    XCTAssertEqual(
-      ActionInputShape.allCases,
-      [
-        .none,
-        .string,
-        .windowPlacement,
-        .windowMove,
-      ]
-    )
-  }
-
   func testActionInputShapeRoundTripsCodable() throws {
     for inputShape in ActionInputShape.allCases {
       let data = try JSONEncoder().encode(inputShape)
@@ -22,7 +10,7 @@ final class ActionInputShapeTests: XCTestCase {
     }
   }
 
-  func testActionInputShapeRawValuesAreStable() {
+  func testActionInputShapeRawValuesAreCanonical() {
     XCTAssertEqual(
       ActionInputShape.allCases.map(\.rawValue),
       [
@@ -36,7 +24,7 @@ final class ActionInputShapeTests: XCTestCase {
 
   func testInputShapeForActionKinds() {
     let inputShapes = Dictionary(
-      uniqueKeysWithValues: ActionKind.allCases.map { ($0, $0.inputShape) }
+      uniqueKeysWithValues: ActionKind.allCases.map { ($0, $0.inputDescriptor.shape) }
     )
 
     XCTAssertEqual(
@@ -74,14 +62,6 @@ final class ActionInputShapeTests: XCTestCase {
         .captureScreenFull: .none,
         .captureScreenSelection: .none,
         .captureScreenWindow: .none,
-        .windowMaximize: .none,
-        .windowLeftHalf: .none,
-        .windowRightHalf: .none,
-        .windowTopHalf: .none,
-        .windowBottomHalf: .none,
-        .windowCenter: .none,
-        .windowMoveToNextScreen: .none,
-        .windowMoveToPreviousScreen: .none,
         .windowPlacement: .windowPlacement,
         .windowMove: .windowMove,
       ]

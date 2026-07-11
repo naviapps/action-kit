@@ -9,14 +9,7 @@ public struct ActionAttempt: Codable, Sendable, Equatable, Hashable {
   /// How long the step took, when measured by the executor.
   public let duration: Duration?
 
-  /// Creates an action attempt.
-  ///
-  /// - Parameters:
-  ///   - requiredPermissions: Permissions required by the attempted path.
-  ///   - isFallback: Whether the attempt used a fallback execution path.
-  ///   - result: The result produced by the attempt.
-  ///   - duration: How long the attempt took, when measured by the executor.
-  public init(
+  package init(
     requiredPermissions: Set<ActionPermission>,
     isFallback: Bool,
     result: ActionResult,
@@ -48,12 +41,18 @@ extension ActionAttempt {
 
   /// Decodes an action attempt from its public result payload.
   public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(
+      allowed: [CodingKeys.requiredPermissions, .isFallback, .result, .durationSeconds],
+      debugName: "ActionAttempt"
+    )
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    requiredPermissions = Set(
-      try container.decode([ActionPermission].self, forKey: .requiredPermissions))
+    requiredPermissions = try container.decodeCanonicalPermissionSet(forKey: .requiredPermissions)
     isFallback = try container.decode(Bool.self, forKey: .isFallback)
     result = try container.decode(ActionResult.self, forKey: .result)
-    if let durationSeconds = try container.decodeIfPresent(Double.self, forKey: .durationSeconds) {
+    if let durationSeconds = try container.decodeIfPresentRejectingNull(
+      Double.self,
+      forKey: .durationSeconds
+    ) {
       duration = try Duration(
         secondsValue: durationSeconds,
         codingPath: container.codingPath + [CodingKeys.durationSeconds]
@@ -63,10 +62,10 @@ extension ActionAttempt {
     }
   }
 
-  /// Encodes an action attempt with stable permission array ordering.
+  /// Encodes an action attempt with canonical permission array ordering.
   public func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(requiredPermissions.stableCodableOrder, forKey: .requiredPermissions)
+    try container.encode(requiredPermissions.canonicalCodableOrder, forKey: .requiredPermissions)
     try container.encode(isFallback, forKey: .isFallback)
     try container.encode(result, forKey: .result)
     if let duration {

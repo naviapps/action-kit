@@ -1,4 +1,4 @@
-@testable import ActionKitAppKit
+import ActionKitAppKit
 
 func makeActionExecutorDependencies(
   keyEventPoster: any KeyEventPosting = TestKeyEventPoster(),

@@ -74,22 +74,6 @@ public enum Action: Codable, Hashable, Sendable {
   /// Captures a user-selected window.
   case captureScreenWindow
 
-  /// Maximizes the focused window.
-  case windowMaximize
-  /// Places the focused window on the left half of its screen.
-  case windowLeftHalf
-  /// Places the focused window on the right half of its screen.
-  case windowRightHalf
-  /// Places the focused window on the top half of its screen.
-  case windowTopHalf
-  /// Places the focused window on the bottom half of its screen.
-  case windowBottomHalf
-  /// Centers the focused window on its screen.
-  case windowCenter
-  /// Moves the focused window to the next screen.
-  case windowMoveToNextScreen
-  /// Moves the focused window to the previous screen.
-  case windowMoveToPreviousScreen
   /// Places the focused window using an explicit placement request.
   case windowPlacement(WindowPlacementRequest)
   /// Moves the focused window using an explicit screen movement request.

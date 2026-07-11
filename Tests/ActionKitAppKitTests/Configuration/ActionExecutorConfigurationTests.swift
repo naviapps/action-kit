@@ -1,7 +1,7 @@
 import ApplicationServices
 import XCTest
 
-@testable import ActionKitAppKit
+import ActionKitAppKit
 
 @MainActor
 final class ActionExecutorConfigurationTests: XCTestCase {
@@ -26,7 +26,7 @@ final class ActionExecutorConfigurationTests: XCTestCase {
     }
   }
 
-  func testLogLevelCasesAreStable() {
+  func testLogLevelCasesAreCanonical() {
     XCTAssertEqual(
       ActionExecutorConfiguration.LogLevel.allCases,
       [
@@ -38,7 +38,7 @@ final class ActionExecutorConfigurationTests: XCTestCase {
     )
   }
 
-  func testLogLevelRawValuesAreStable() {
+  func testLogLevelRawValuesAreCanonical() {
     XCTAssertEqual(
       ActionExecutorConfiguration.LogLevel.allCases.map(\.rawValue),
       [

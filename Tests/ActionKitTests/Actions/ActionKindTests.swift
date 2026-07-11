@@ -1,59 +1,9 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionKindTests: XCTestCase {
-  func testActionKindCasesAreStable() {
-    XCTAssertEqual(
-      ActionKind.allCases,
-      [
-        .copy,
-        .paste,
-        .cut,
-        .undo,
-        .redo,
-        .hideFrontmostApplication,
-        .quitFrontmostApplication,
-        .volumeUp,
-        .volumeDown,
-        .volumeMute,
-        .mediaPlayPause,
-        .mediaNext,
-        .mediaPrevious,
-        .keyboardShortcut,
-        .openURL,
-        .launchApplication,
-        .runShortcut,
-        .openFolder,
-        .missionControl,
-        .showDesktop,
-        .lockScreen,
-        .sleepMac,
-        .missionControlNextSpace,
-        .missionControlPreviousSpace,
-        .missionControlAppExpose,
-        .brightnessUp,
-        .brightnessDown,
-        .toggleAppearance,
-        .showNotificationCenter,
-        .captureScreenFull,
-        .captureScreenSelection,
-        .captureScreenWindow,
-        .windowMaximize,
-        .windowLeftHalf,
-        .windowRightHalf,
-        .windowTopHalf,
-        .windowBottomHalf,
-        .windowCenter,
-        .windowMoveToNextScreen,
-        .windowMoveToPreviousScreen,
-        .windowPlacement,
-        .windowMove,
-      ]
-    )
-  }
-
-  func testActionKindIdentifiersAreStable() {
+  func testActionKindIdentifiersAreCanonical() {
     XCTAssertEqual(
       ActionKind.allCases.map(\.identifier),
       [
@@ -89,14 +39,6 @@ final class ActionKindTests: XCTestCase {
         "action.system.capture-screen-full",
         "action.system.capture-screen-selection",
         "action.system.capture-screen-window",
-        "action.window.maximize",
-        "action.window.left-half",
-        "action.window.right-half",
-        "action.window.top-half",
-        "action.window.bottom-half",
-        "action.window.center",
-        "action.window.move-to-next-screen",
-        "action.window.move-to-previous-screen",
         "action.window.placement",
         "action.window.move",
       ]

@@ -22,6 +22,17 @@ Host apps should provide an ``ActionExecutorConfiguration`` when they need app-s
 hooks, recovery UI, or logging. The package does not own user onboarding, shortcut registration,
 persistence, analytics, or telemetry.
 The default Accessibility hook reads the current macOS trust state without prompting.
+Use ``ActionExecutorConfiguration/LogLevel`` to decide which executor diagnostics are forwarded.
+
+## Responsibility Boundary
+
+ActionKitAppKit owns the default live macOS executor for ActionKit actions,
+including AppKit, Core Graphics, AppleScript, Shortcuts URL, screen capture, and
+WindowKitAppKit integration paths.
+
+Host apps remain responsible for permission onboarding, user-facing prompts,
+shortcut registration, recovery UI, persistence, analytics, telemetry, privacy
+disclosures, and deciding which actions are exposed.
 
 ## Permissions
 
@@ -30,7 +41,7 @@ Use `ActionPreflight.permissionHints(for:)` before execution when the host app n
 permission requirements to users.
 
 ActionKitAppKit keeps permission UX injectable instead of depending on a specific onboarding
-library. Apps that use [PermissionsKit](https://github.com/naviapps/permissions-kit) can call
+library. Apps that use `PermissionsKit` can call
 `PermissionsKitAppKit` from ``ActionExecutorConfiguration/Permissions`` hooks to check status,
 request supported permissions, or open System Settings while keeping ActionKit's permission model
 action-specific.
@@ -40,6 +51,9 @@ action-specific.
 ### Execution
 
 - ``ActionExecutor``
+- ``ActionExecutor/init(configuration:)``
 - ``ActionExecutorConfiguration``
+- ``ActionExecutorConfiguration/init(permissions:log:)``
 - ``ActionExecutorConfiguration/Permissions``
+- ``ActionExecutorConfiguration/Permissions/init(ensureAccessibility:ensureAutomation:onAutomationDenied:onScreenRecordingRequired:)``
 - ``ActionExecutorConfiguration/LogLevel``

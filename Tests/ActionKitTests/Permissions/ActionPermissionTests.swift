@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionPermissionTests: XCTestCase {
   func testPermissionRoundTripsCodableRawValue() throws {
@@ -10,7 +10,7 @@ final class ActionPermissionTests: XCTestCase {
     }
   }
 
-  func testPermissionRawValuesAreStable() {
+  func testPermissionRawValuesAreCanonical() {
     XCTAssertEqual(
       ActionPermission.allCases.map(\.rawValue),
       ["accessibility", "automation", "screen-recording"]

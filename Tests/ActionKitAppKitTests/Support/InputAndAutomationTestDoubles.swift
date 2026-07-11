@@ -1,7 +1,7 @@
 import ApplicationServices
 import Foundation
 
-@testable import ActionKitAppKit
+import ActionKitAppKit
 
 final class TestKeyEventPoster: KeyEventPosting, @unchecked Sendable {
   private let lock = NSLock()

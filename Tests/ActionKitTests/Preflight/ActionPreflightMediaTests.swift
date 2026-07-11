@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionPreflightMediaTests: XCTestCase {
   func testMediaActionsUseExpectedKeyEvents() {
@@ -16,11 +16,5 @@ final class ActionPreflightMediaTests: XCTestCase {
     for expectation in cases {
       assertSingleAccessibilityKeyEventPlan(expectation)
     }
-  }
-
-  func testMediaPlanDoesNotHandleOtherActions() {
-    XCTAssertNil(ActionPreflight.mediaPlan(for: .copy))
-    XCTAssertNil(ActionPreflight.mediaPlan(for: .brightnessUp))
-    XCTAssertNil(ActionPreflight.mediaPlan(for: .showDesktop))
   }
 }

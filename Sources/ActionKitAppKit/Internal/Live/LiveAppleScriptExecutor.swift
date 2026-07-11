@@ -1,8 +1,10 @@
 import Foundation
 
 struct LiveAppleScriptExecutor: AppleScriptExecuting {
+  init() {}
+
   func execute(source: String) async -> Result<Void, AppleScriptExecutionFailure> {
-    await MainActor.run {
+    await Task.detached(priority: .userInitiated) {
       guard let script = NSAppleScript(source: source) else {
         return .failure(.init(appleScriptErrorNumber: nil))
       }
@@ -13,7 +15,7 @@ struct LiveAppleScriptExecutor: AppleScriptExecuting {
         return .failure(Self.failure(from: errorInfo))
       }
       return .success(())
-    }
+    }.value
   }
 
   private static func failure(from errorInfo: NSDictionary) -> AppleScriptExecutionFailure {

@@ -1,6 +1,6 @@
 import Foundation
 
-@testable import ActionKitAppKit
+import ActionKitAppKit
 
 struct TestApplicationOpenError: Error {}
 

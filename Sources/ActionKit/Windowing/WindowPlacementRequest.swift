@@ -1,33 +1,34 @@
 import CoreGraphics
-import WindowKit
 
 /// A request to place the focused window.
 public struct WindowPlacementRequest: Sendable, Equatable, Hashable {
   /// The target placement geometry.
-  public let placement: WindowPlacement
+  public let placement: ActionWindowPlacement
   /// The screen selection rule.
-  public let screen: WindowScreenTarget
+  public let screen: ActionWindowScreenTarget
   /// The screen area used for placement.
-  public let area: WindowScreenArea
+  public let area: ActionWindowScreenArea
   /// The inset applied to the placement frame.
   public let inset: CGFloat
 
   /// Creates a focused-window placement request.
   ///
   /// - Parameters:
-  ///   - placement: The target placement geometry.
-  ///   - screen: The screen selection rule.
+  ///   - placement: The target placement geometry. Grid values and centered ratios are clamped to
+  ///     their executable ranges.
+  ///   - screen: The screen selection rule. Non-finite point coordinates and negative ordered
+  ///     indexes are normalized to zero.
   ///   - area: The screen area used for placement.
   ///   - inset: The inset applied to the placement frame. Negative or non-finite values are
   ///     normalized to `0`.
   public init(
-    placement: WindowPlacement,
-    screen: WindowScreenTarget = .containingWindow,
-    area: WindowScreenArea = .visible,
+    placement: ActionWindowPlacement,
+    screen: ActionWindowScreenTarget = .containingWindow,
+    area: ActionWindowScreenArea = .visible,
     inset: CGFloat = 0
   ) {
-    self.placement = placement
-    self.screen = screen
+    self.placement = placement.normalized
+    self.screen = screen.normalized
     self.area = area
     self.inset = Self.normalizedInset(inset)
   }

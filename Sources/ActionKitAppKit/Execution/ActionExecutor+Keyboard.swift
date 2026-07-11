@@ -4,9 +4,7 @@ import ApplicationServices
 extension ActionExecutor {
   func executeKeyboardShortcut(_ shortcut: String) async -> ActionResult {
     guard let parsedShortcut = KeyboardShortcutParser.parse(shortcut) else {
-      let actionError = ActionError.invalidInput("Failed to parse keyboard shortcut")
-      configuration.log(.warning, actionError.diagnosticMessage)
-      return .failure(actionError)
+      return invalidInputResult("Failed to parse keyboard shortcut")
     }
 
     return await executeKeyStroke(
@@ -23,14 +21,8 @@ extension ActionExecutor {
   }
 
   private func executeKeyStroke(virtualKey: CGKeyCode, flags: CGEventFlags) async -> ActionResult {
-    guard await configuration.permissions.ensureAccessibility() else {
-      return .failure(.permissionDenied(.accessibility))
-    }
-
     guard dependencies.keyEventPoster.postKeyStroke(virtualKey: virtualKey, flags: flags) else {
-      let actionError = ActionError.internalError("Failed to post key stroke event")
-      configuration.log(.error, actionError.diagnosticMessage)
-      return .failure(actionError)
+      return internalErrorResult("Failed to post key stroke event")
     }
     return .success
   }

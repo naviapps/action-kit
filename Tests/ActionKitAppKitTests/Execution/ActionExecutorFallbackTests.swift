@@ -1,12 +1,12 @@
 import ApplicationServices
 import XCTest
 
-@testable import ActionKit
-@testable import ActionKitAppKit
+import ActionKit
+import ActionKitAppKit
 
 @MainActor
 final class ActionExecutorFallbackTests: XCTestCase {
-  func testEmptyPlanReturnsNoAttemptOutcome() async {
+  func testEmptyPlanRecordsInternalErrorAttempt() async {
     let recorder = AutomationDeniedRecorder()
     let executor = ActionExecutor(
       configuration: .init(
@@ -20,11 +20,14 @@ final class ActionExecutorFallbackTests: XCTestCase {
 
     let outcome = await executor.execute(plan: ActionPlan(steps: []))
 
-    XCTAssertTrue(outcome.attempts.isEmpty)
+    XCTAssertEqual(outcome.attempts.count, 1)
     XCTAssertEqual(
       outcome.finalResult,
       .failure(.internalError("No execution attempts were recorded"))
     )
+    XCTAssertEqual(outcome.attempts.first?.result, outcome.finalResult)
+    XCTAssertEqual(outcome.attempts.first?.requiredPermissions, [])
+    XCTAssertFalse(outcome.attempts.first?.isFallback ?? true)
     let wasCalled = await recorder.called
     XCTAssertFalse(wasCalled)
   }
@@ -183,7 +186,8 @@ final class ActionExecutorFallbackTests: XCTestCase {
       .init(
         method: .appleScript(
           source: "tell application \"System Events\" to keystroke \"a\"",
-          requiresSystemEvents: true
+          launchesSystemEvents: true,
+          usesAccessibility: true
         ))
     ])
 
@@ -221,7 +225,9 @@ final class ActionExecutorFallbackTests: XCTestCase {
     )
 
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false)),
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false)),
       .init(method: .keyEventFromKeyboardShortcut("cmd"), isFallback: true),
     ])
 
@@ -258,7 +264,9 @@ final class ActionExecutorFallbackTests: XCTestCase {
     )
 
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false)),
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false)),
       .init(method: .hideFrontmostApplication, isFallback: true),
     ])
 
@@ -296,9 +304,12 @@ final class ActionExecutorFallbackTests: XCTestCase {
     )
 
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false)),
       .init(
-        method: .appleScript(source: "tell app", requiresSystemEvents: false),
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false)),
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false),
         isFallback: true
       ),
     ])

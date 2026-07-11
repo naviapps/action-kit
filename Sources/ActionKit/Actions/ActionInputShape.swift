@@ -1,6 +1,6 @@
 /// The structural shape of host-supplied input required by an action kind.
 ///
-/// Use this as a stable discriminator for catalog metadata, schema export, and serialized action
+/// Use this as a canonical discriminator for catalog metadata, schema export, and serialized action
 /// payloads. The ``none`` case describes input-free action kinds; it is not represented by
 /// ``ActionInput``.
 public enum ActionInputShape: String, Codable, Hashable, CaseIterable, Sendable {

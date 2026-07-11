@@ -1,9 +1,9 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionPermissionHintTests: XCTestCase {
-  func testPermissionReasonRawValuesAreStable() {
+  func testPermissionReasonRawValuesAreCanonical() {
     XCTAssertEqual(
       ActionPermissionReason.allCases.map(\.rawValue),
       [
@@ -45,7 +45,7 @@ final class ActionPermissionHintTests: XCTestCase {
     XCTAssertEqual(hints.count, 2)
   }
 
-  func testPermissionHintUsesStableCodableShape() throws {
+  func testPermissionHintUsesCanonicalCodableShape() throws {
     let hint = ActionPermissionHint(
       permission: .screenRecording,
       reason: .screenRecordingCapture
@@ -56,5 +56,24 @@ final class ActionPermissionHintTests: XCTestCase {
 
     XCTAssertEqual(object?["permission"] as? String, "screen-recording")
     XCTAssertEqual(object?["reason"] as? String, "screen-recording-capture")
+  }
+
+  func testPermissionHintRejectsUnknownFieldsOnDecode() throws {
+    let data = """
+      {
+        "permission": "accessibility",
+        "reason": "accessibility-windowing",
+        "metadata": {}
+      }
+      """.data(using: .utf8)!
+
+    XCTAssertThrowsError(
+      try JSONDecoder().decode(ActionPermissionHint.self, from: data)
+    ) { error in
+      guard case let DecodingError.dataCorrupted(context) = error else {
+        return XCTFail("Expected dataCorrupted, got \(error)")
+      }
+      XCTAssertEqual(context.codingPath.map(\.stringValue), ["metadata"])
+    }
   }
 }

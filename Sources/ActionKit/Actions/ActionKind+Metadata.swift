@@ -1,17 +1,12 @@
 extension ActionKind {
-  /// The stable semantic identifier for registries, persistence, and tool surfaces.
+  /// The canonical serialization identifier for registries, persistence, and tool surfaces.
   public var identifier: String {
-    metadata.identifier
+    "action.\(metadata.category.rawValue).\(identifierPath)"
   }
 
   /// The catalog category for the action kind.
   public var category: ActionCategory {
     metadata.category
-  }
-
-  /// The host-supplied input shape required to create this action kind.
-  public var inputShape: ActionInputShape {
-    inputDescriptor.shape
   }
 
   /// Parameter metadata for building host UIs, schema exporters, and tool surfaces.
@@ -24,7 +19,7 @@ extension ActionKind {
     metadata.capabilities
   }
 
-  /// Creates an action kind from its stable semantic identifier.
+  /// Creates an action kind from its canonical serialization identifier.
   ///
   /// - Parameter identifier: The value exposed by ``identifier``.
   public init?(identifier: String) {
@@ -38,7 +33,6 @@ extension ActionKind {
     switch self {
     case .copy, .paste, .cut, .undo, .redo:
       .init(
-        identifier: "action.editing.\(identifierPath)",
         category: .editing,
         capabilities: .frontmostApplication(
           isDestructive: self != .copy,
@@ -47,7 +41,6 @@ extension ActionKind {
       )
     case .hideFrontmostApplication, .quitFrontmostApplication:
       .init(
-        identifier: "action.frontmost-application.\(identifierPath)",
         category: .frontmostApplication,
         capabilities: .frontmostApplication(
           isDestructive: self == .quitFrontmostApplication,
@@ -55,10 +48,9 @@ extension ActionKind {
         )
       )
     case .volumeUp, .volumeDown, .volumeMute, .mediaPlayPause, .mediaNext, .mediaPrevious:
-      .init(identifier: "action.media.\(identifierPath)", category: .media, capabilities: .unsafe)
+      .init(category: .media, capabilities: .unsafe)
     case .keyboardShortcut:
       .init(
-        identifier: "action.keyboard.shortcut",
         category: .keyboard,
         inputDescriptor: .required(
           shape: .string,
@@ -70,7 +62,6 @@ extension ActionKind {
       )
     case .openURL:
       .init(
-        identifier: "action.workspace.open-url",
         category: .workspace,
         inputDescriptor: .required(
           shape: .string,
@@ -82,7 +73,6 @@ extension ActionKind {
       )
     case .launchApplication:
       .init(
-        identifier: "action.workspace.launch-application",
         category: .workspace,
         inputDescriptor: .required(
           shape: .string,
@@ -94,7 +84,6 @@ extension ActionKind {
       )
     case .runShortcut:
       .init(
-        identifier: "action.workspace.run-shortcut",
         category: .workspace,
         inputDescriptor: .required(
           shape: .string,
@@ -106,19 +95,17 @@ extension ActionKind {
       )
     case .openFolder:
       .init(
-        identifier: "action.workspace.open-folder",
         category: .workspace,
         inputDescriptor: .required(
           shape: .string,
           parameterName: "folder",
           parameterDescription: "Folder path to open.",
-          exampleInput: .string("/Users/example/Documents")
+          exampleInput: .string("/Applications")
         ),
         capabilities: .unsafe
       )
     case .lockScreen, .sleepMac, .toggleAppearance:
       .init(
-        identifier: "action.system.\(identifierPath)",
         category: .system,
         capabilities: .destructiveUnsafe
       )
@@ -126,41 +113,29 @@ extension ActionKind {
       .missionControlAppExpose, .brightnessUp, .brightnessDown, .showNotificationCenter,
       .captureScreenFull:
       .init(
-        identifier: "action.system.\(identifierPath)",
         category: .system,
         capabilities: .unsafe
       )
     case .captureScreenSelection, .captureScreenWindow:
       .init(
-        identifier: "action.system.\(identifierPath)",
         category: .system,
         capabilities: .init(requiresInteractiveSelection: true, retryBehavior: .unsafe)
       )
-    case .windowMaximize, .windowLeftHalf, .windowRightHalf, .windowTopHalf, .windowBottomHalf,
-      .windowCenter, .windowMoveToNextScreen, .windowMoveToPreviousScreen:
-      .init(
-        identifier: "action.window.\(identifierPath)",
-        category: .window,
-        capabilities: .focusedWindow(
-          retryBehavior: self == .windowMoveToNextScreen || self == .windowMoveToPreviousScreen
-            ? .unsafe : .safe
-        )
-      )
     case .windowPlacement:
       .init(
-        identifier: "action.window.placement",
         category: .window,
         inputDescriptor: .required(
           shape: .windowPlacement,
           parameterName: "request",
           parameterDescription: "Focused-window placement request.",
-          exampleInput: .windowPlacement(.init(placement: .leftHalf))
+          exampleInput: .windowPlacement(
+            .init(
+              placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1)))
         ),
         capabilities: .focusedWindow(retryBehavior: .safe)
       )
     case .windowMove:
       .init(
-        identifier: "action.window.move",
         category: .window,
         inputDescriptor: .required(
           shape: .windowMove,
@@ -207,14 +182,6 @@ extension ActionKind {
     case .captureScreenFull: "capture-screen-full"
     case .captureScreenSelection: "capture-screen-selection"
     case .captureScreenWindow: "capture-screen-window"
-    case .windowMaximize: "maximize"
-    case .windowLeftHalf: "left-half"
-    case .windowRightHalf: "right-half"
-    case .windowTopHalf: "top-half"
-    case .windowBottomHalf: "bottom-half"
-    case .windowCenter: "center"
-    case .windowMoveToNextScreen: "move-to-next-screen"
-    case .windowMoveToPreviousScreen: "move-to-previous-screen"
     case .windowPlacement: "placement"
     case .windowMove: "move"
     }
@@ -222,18 +189,15 @@ extension ActionKind {
 }
 
 private struct ActionKindMetadata {
-  let identifier: String
   let category: ActionCategory
   let inputDescriptor: ActionInputDescriptor
   let capabilities: ActionKindCapabilities
 
   init(
-    identifier: String,
     category: ActionCategory,
     inputDescriptor: ActionInputDescriptor = .none,
     capabilities: ActionKindCapabilities
   ) {
-    self.identifier = identifier
     self.category = category
     self.inputDescriptor = inputDescriptor
     self.capabilities = capabilities
@@ -247,18 +211,12 @@ extension ActionInputDescriptor {
     parameterDescription: String,
     exampleInput: ActionInput
   ) -> ActionInputDescriptor {
-    guard
-      let parameter = ActionInputParameter(
-        name: parameterName,
-        description: parameterDescription,
-        exampleInput: exampleInput
-      ),
-      let descriptor = ActionInputDescriptor(shape: shape, parameter: parameter)
-    else {
-      preconditionFailure("Action input descriptor metadata must be shape-compatible.")
-    }
-
-    return descriptor
+    let parameter = ActionInputParameter(
+      canonicalName: parameterName,
+      description: parameterDescription,
+      exampleInput: exampleInput
+    )
+    return ActionInputDescriptor(canonicalShape: shape, parameter: parameter)
   }
 }
 

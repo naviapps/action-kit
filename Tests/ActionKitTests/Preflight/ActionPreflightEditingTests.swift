@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionPreflightEditingTests: XCTestCase {
   func testEditingActionsUseExpectedKeyEvents() {
@@ -15,10 +15,5 @@ final class ActionPreflightEditingTests: XCTestCase {
     for expectation in cases {
       assertSingleAccessibilityKeyEventPlan(expectation)
     }
-  }
-
-  func testEditingPlanDoesNotHandleNonEditingActions() {
-    XCTAssertNil(ActionPreflight.editingPlan(for: .volumeUp))
-    XCTAssertNil(ActionPreflight.editingPlan(for: .windowMaximize))
   }
 }

@@ -1,10 +1,9 @@
 import Foundation
-import WindowKit
 
 /// Host-supplied input used to create an executable action from an action kind.
 ///
 /// `ActionInput` carries values for action kinds whose ``ActionInputShape`` is not
-/// ``ActionInputShape/none``. Use ``ActionKind/action()`` for input-free action kinds.
+/// ``ActionInputShape/none``. Use ``ActionKind/makeAction()`` for input-free action kinds.
 public enum ActionInput: Codable, Hashable, Sendable {
   /// Kind-specific text input.
   ///
@@ -30,7 +29,7 @@ extension ActionInput {
     }
   }
 
-  package var normalized: ActionInput? {
+  var normalized: ActionInput? {
     switch self {
     case let .string(value):
       guard let normalized = Self.normalizedString(value) else {
@@ -42,7 +41,7 @@ extension ActionInput {
     }
   }
 
-  package static func normalizedString(_ value: String) -> String? {
+  static func normalizedString(_ value: String) -> String? {
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
     return trimmed.isEmpty ? nil : trimmed
   }

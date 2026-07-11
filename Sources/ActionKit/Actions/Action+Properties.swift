@@ -34,14 +34,6 @@ extension Action {
     case .captureScreenFull: .captureScreenFull
     case .captureScreenSelection: .captureScreenSelection
     case .captureScreenWindow: .captureScreenWindow
-    case .windowMaximize: .windowMaximize
-    case .windowLeftHalf: .windowLeftHalf
-    case .windowRightHalf: .windowRightHalf
-    case .windowTopHalf: .windowTopHalf
-    case .windowBottomHalf: .windowBottomHalf
-    case .windowCenter: .windowCenter
-    case .windowMoveToNextScreen: .windowMoveToNextScreen
-    case .windowMoveToPreviousScreen: .windowMoveToPreviousScreen
     case .windowPlacement: .windowPlacement
     case .windowMove: .windowMove
     }
@@ -67,8 +59,7 @@ extension Action {
       .missionControl, .showDesktop, .lockScreen, .sleepMac, .missionControlNextSpace,
       .missionControlPreviousSpace, .missionControlAppExpose, .brightnessUp, .brightnessDown,
       .toggleAppearance, .showNotificationCenter, .captureScreenFull, .captureScreenSelection,
-      .captureScreenWindow, .windowMaximize, .windowLeftHalf, .windowRightHalf, .windowTopHalf,
-      .windowBottomHalf, .windowCenter, .windowMoveToNextScreen, .windowMoveToPreviousScreen:
+      .captureScreenWindow:
       return nil
     }
   }

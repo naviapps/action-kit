@@ -4,21 +4,11 @@ import ApplicationServices
 extension ActionExecutor {
   func runAppleScript(
     _ source: String,
-    requiresSystemEvents: Bool
+    launchesSystemEvents: Bool
   ) async -> ActionResult {
-    guard await configuration.permissions.ensureAutomation() else {
-      return .failure(.permissionDenied(.automation))
-    }
-
-    if requiresSystemEvents {
-      guard await configuration.permissions.ensureAccessibility() else {
-        return .failure(.permissionDenied(.accessibility))
-      }
-
+    if launchesSystemEvents {
       guard await dependencies.systemEventsLauncher.ensureRunning() else {
-        let actionError = ActionError.internalError("System Events is not running")
-        configuration.log(.error, actionError.diagnosticMessage)
-        return .failure(actionError)
+        return internalErrorResult("System Events is not running")
       }
     }
 
@@ -27,20 +17,19 @@ extension ActionExecutor {
       return .success
     case .failure(let error):
       if error.isAutomationPermissionDenied {
-        let actionError = ActionError.automationPermissionDenied(
-          appleScriptErrorNumber: error.appleScriptErrorNumber
+        return failureResult(
+          .automationPermissionDenied(appleScriptErrorNumber: error.appleScriptErrorNumber),
+          logLevel: .error
         )
-        configuration.log(.error, actionError.diagnosticMessage)
-        return .failure(actionError)
       }
 
       let failureMessage = ActionExecutor.appleScriptFailureMessage(error)
-      configuration.log(.error, failureMessage)
-      return .failure(
+      return failureResult(
         .appleScriptFailed(
           failureMessage,
           appleScriptErrorNumber: error.appleScriptErrorNumber
-        )
+        ),
+        logLevel: .error
       )
     }
   }

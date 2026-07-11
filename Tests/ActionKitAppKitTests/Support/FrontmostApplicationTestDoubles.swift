@@ -1,4 +1,4 @@
-@testable import ActionKitAppKit
+import ActionKitAppKit
 
 struct TestFrontmostApplicationController: FrontmostApplicationControlling {
   let hideResult: FrontmostApplicationControlResult

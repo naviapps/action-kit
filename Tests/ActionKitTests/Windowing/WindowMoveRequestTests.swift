@@ -1,7 +1,6 @@
-import WindowKit
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class WindowMoveRequestTests: XCTestCase {
   func testPreservesRelativePositionByDefault() {
@@ -22,7 +21,7 @@ final class WindowMoveRequestTests: XCTestCase {
     )
   }
 
-  func testUsesStableCodableKeys() throws {
+  func testUsesCanonicalCodableKeys() throws {
     let object = try encodedObject(WindowMoveRequest(direction: .next))
 
     XCTAssertEqual(Set(object.keys), ["direction", "preservesRelativePosition"])
@@ -30,8 +29,8 @@ final class WindowMoveRequestTests: XCTestCase {
     XCTAssertEqual(object["preservesRelativePosition"] as? Bool, true)
   }
 
-  func testEncodesStableDirections() throws {
-    let cases: [(WindowScreenCycleDirection, String)] = [
+  func testEncodesCanonicalDirections() throws {
+    let cases: [(ActionWindowScreenCycleDirection, String)] = [
       (.next, "next"),
       (.previous, "previous"),
     ]
@@ -43,7 +42,7 @@ final class WindowMoveRequestTests: XCTestCase {
     }
   }
 
-  func testDecodesStableDirections() throws {
+  func testDecodesCanonicalDirections() throws {
     XCTAssertEqual(
       try decodedRequest(direction: "next"),
       WindowMoveRequest(direction: .next)
@@ -54,7 +53,7 @@ final class WindowMoveRequestTests: XCTestCase {
     )
   }
 
-  func testDecodesStableCodablePayload() throws {
+  func testDecodesCanonicalCodablePayload() throws {
     let data = Data(
       """
       {
@@ -81,6 +80,20 @@ final class WindowMoveRequestTests: XCTestCase {
 
   func testDecodingRejectsNullRelativePosition() {
     let data = Data(#"{"direction":"next","preservesRelativePosition":null}"#.utf8)
+
+    XCTAssertThrowsError(try JSONDecoder().decode(WindowMoveRequest.self, from: data))
+  }
+
+  func testDecodingRejectsUnknownFields() {
+    let data = Data(
+      """
+      {
+        "direction": "next",
+        "preservesRelativePosition": true,
+        "metadata": {}
+      }
+      """.utf8
+    )
 
     XCTAssertThrowsError(try JSONDecoder().decode(WindowMoveRequest.self, from: data))
   }

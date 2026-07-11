@@ -2,7 +2,7 @@
 public struct ActionPermissionHint: Sendable, Equatable, Hashable, Codable {
   /// The required permission.
   public let permission: ActionPermission
-  /// The stable reason code a host app can map to user-facing copy.
+  /// The reason code a host app can map to user-facing copy.
   public let reason: ActionPermissionReason
 
   /// Creates a permission hint.
@@ -16,16 +16,27 @@ public struct ActionPermissionHint: Sendable, Equatable, Hashable, Codable {
   }
 }
 
-/// A stable reason code for a permission requirement.
-public enum ActionPermissionReason: String, Sendable, Codable, Hashable, CaseIterable {
-  /// The action uses Accessibility in a general way.
-  case accessibility
-  /// The action sends key events through Accessibility.
-  case accessibilityKeyEvent = "accessibility-key-event"
-  /// The action controls the focused window through Accessibility.
-  case accessibilityWindowing = "accessibility-windowing"
-  /// The action sends Apple Events through AppleScript.
-  case automationAppleEvents = "automation-apple-events"
-  /// The action captures screen contents.
-  case screenRecordingCapture = "screen-recording-capture"
+extension ActionPermissionHint {
+  private enum CodingKeys: String, CodingKey {
+    case permission
+    case reason
+  }
+
+  /// Decodes a permission hint from its canonical permission and reason fields.
+  public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(
+      allowed: [CodingKeys.permission, .reason],
+      debugName: "ActionPermissionHint"
+    )
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    permission = try container.decode(ActionPermission.self, forKey: .permission)
+    reason = try container.decode(ActionPermissionReason.self, forKey: .reason)
+  }
+
+  /// Encodes a permission hint with its canonical permission and reason fields.
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(permission, forKey: .permission)
+    try container.encode(reason, forKey: .reason)
+  }
 }

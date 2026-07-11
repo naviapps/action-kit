@@ -39,21 +39,40 @@ extension ActionPermissionSet {
 
   /// Decodes permission requirements from primary and fallback permission arrays.
   public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(
+      allowed: [CodingKeys.primary, .fallback],
+      debugName: "ActionPermissionSet"
+    )
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    primary = Set(try container.decode([ActionPermission].self, forKey: .primary))
-    fallback = Set(try container.decode([ActionPermission].self, forKey: .fallback))
+    primary = try container.decodeCanonicalPermissionSet(forKey: .primary)
+    fallback = try container.decodeCanonicalPermissionSet(forKey: .fallback)
   }
 
-  /// Encodes permission requirements with stable permission array ordering.
+  /// Encodes permission requirements with canonical permission array ordering.
   public func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(primary.stableCodableOrder, forKey: .primary)
-    try container.encode(fallback.stableCodableOrder, forKey: .fallback)
+    try container.encode(primary.canonicalCodableOrder, forKey: .primary)
+    try container.encode(fallback.canonicalCodableOrder, forKey: .fallback)
   }
 }
 
 extension Set where Element == ActionPermission {
-  package var stableCodableOrder: [ActionPermission] {
+  package var canonicalCodableOrder: [ActionPermission] {
     sorted { $0.rawValue < $1.rawValue }
+  }
+}
+
+extension KeyedDecodingContainer {
+  func decodeCanonicalPermissionSet(forKey key: Key) throws -> Set<ActionPermission> {
+    let permissions = try decode([ActionPermission].self, forKey: key)
+    let permissionSet = Set(permissions)
+    guard permissionSet.count == permissions.count else {
+      throw DecodingError.dataCorruptedError(
+        forKey: key,
+        in: self,
+        debugDescription: "\(key.stringValue) must not contain duplicate permissions."
+      )
+    }
+    return permissionSet
   }
 }

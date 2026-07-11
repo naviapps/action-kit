@@ -1,9 +1,7 @@
-import WindowKit
-
 /// A request to move the focused window between screens.
 public struct WindowMoveRequest: Sendable, Equatable, Hashable {
   /// The direction of screen movement.
-  public let direction: WindowScreenCycleDirection
+  public let direction: ActionWindowScreenCycleDirection
   /// Whether to preserve the window's relative position on the destination screen.
   public let preservesRelativePosition: Bool
 
@@ -13,7 +11,7 @@ public struct WindowMoveRequest: Sendable, Equatable, Hashable {
   ///   - direction: The direction of screen movement.
   ///   - preservesRelativePosition: Whether to preserve the window's relative position.
   public init(
-    direction: WindowScreenCycleDirection,
+    direction: ActionWindowScreenCycleDirection,
     preservesRelativePosition: Bool = true
   ) {
     self.direction = direction
@@ -27,42 +25,29 @@ extension WindowMoveRequest: Codable {
     case preservesRelativePosition
   }
 
-  private enum DirectionValue: String, Codable {
-    case next
-    case previous
-
-    var direction: WindowScreenCycleDirection {
-      switch self {
-      case .next: .next
-      case .previous: .previous
-      }
-    }
-
-    init(_ direction: WindowScreenCycleDirection) {
-      switch direction {
-      case .next:
-        self = .next
-      case .previous:
-        self = .previous
-      }
-    }
-  }
-
-  /// Decodes a focused-window screen movement request from stable public field names.
+  /// Decodes a focused-window screen movement request from canonical public field names.
   public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(
+      allowed: [
+        CodingKeys.direction,
+        .preservesRelativePosition,
+      ],
+      debugName: "WindowMoveRequest"
+    )
     let container = try decoder.container(keyedBy: CodingKeys.self)
     self.init(
-      direction: try container.decode(DirectionValue.self, forKey: .direction).direction,
-      preservesRelativePosition: try container.contains(.preservesRelativePosition)
-        ? container.decode(Bool.self, forKey: .preservesRelativePosition)
-        : true
+      direction: try container.decode(ActionWindowScreenCycleDirection.self, forKey: .direction),
+      preservesRelativePosition: try container.decodeIfPresentRejectingNull(
+        Bool.self,
+        forKey: .preservesRelativePosition
+      ) ?? true
     )
   }
 
-  /// Encodes a focused-window screen movement request using stable public field names.
+  /// Encodes a focused-window screen movement request using canonical public field names.
   public func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(DirectionValue(direction), forKey: .direction)
+    try container.encode(direction, forKey: .direction)
     try container.encode(preservesRelativePosition, forKey: .preservesRelativePosition)
   }
 }

@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionAttemptTests: XCTestCase {
   func testActionAttemptInitializerPreservesPublicProperties() {
@@ -20,7 +20,6 @@ final class ActionAttemptTests: XCTestCase {
   func testActionAttemptStepInitializerPreservesStepMetadata() {
     let step = ActionStep(
       method: .keyEvent(virtualKeyCode: 36),
-      requiredPermissions: [.accessibility],
       isFallback: true
     )
     let attempt = ActionAttempt(
@@ -35,7 +34,7 @@ final class ActionAttemptTests: XCTestCase {
     XCTAssertEqual(attempt.duration, .milliseconds(250))
   }
 
-  func testActionAttemptUsesStableCodableShape() throws {
+  func testActionAttemptUsesCanonicalCodableShape() throws {
     let attempt = ActionAttempt(
       requiredPermissions: [.accessibility],
       isFallback: true,
@@ -54,7 +53,7 @@ final class ActionAttemptTests: XCTestCase {
     XCTAssertNil(object?["duration"])
   }
 
-  func testActionAttemptDecodesStableCodableShape() throws {
+  func testActionAttemptDecodesCanonicalCodableShape() throws {
     let data = """
       {
         "requiredPermissions": ["accessibility"],
@@ -70,6 +69,18 @@ final class ActionAttemptTests: XCTestCase {
     XCTAssertTrue(attempt.isFallback)
     XCTAssertEqual(attempt.result, .skipped(.noFocusedWindow))
     XCTAssertEqual(attempt.duration, .milliseconds(250))
+  }
+
+  func testActionAttemptRejectsDuplicateRequiredPermissionsOnDecode() throws {
+    let data = """
+      {
+        "requiredPermissions": ["accessibility", "accessibility"],
+        "isFallback": false,
+        "result": { "status": "success" }
+      }
+      """.data(using: .utf8)!
+
+    assertActionAttemptDecodeRejects(data, codingPath: ["requiredPermissions"])
   }
 
   func testActionAttemptRejectsNegativeDurationSecondsOnDecode() throws {
@@ -98,7 +109,7 @@ final class ActionAttemptTests: XCTestCase {
     assertActionAttemptDecodeRejects(data, codingPath: ["durationSeconds"])
   }
 
-  func testActionAttemptEncodesPermissionsInStableOrder() throws {
+  func testActionAttemptEncodesPermissionsInCanonicalOrder() throws {
     let attempt = ActionAttempt(
       requiredPermissions: [.screenRecording, .automation, .accessibility],
       isFallback: false,
@@ -162,6 +173,32 @@ final class ActionAttemptTests: XCTestCase {
     let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
 
     XCTAssertNil(object?["durationSeconds"])
+  }
+
+  func testActionAttemptRejectsNullDurationSecondsOnDecode() throws {
+    let data = """
+      {
+        "requiredPermissions": [],
+        "isFallback": false,
+        "result": { "status": "success" },
+        "durationSeconds": null
+      }
+      """.data(using: .utf8)!
+
+    assertActionAttemptDecodeRejects(data, codingPath: ["durationSeconds"])
+  }
+
+  func testActionAttemptRejectsUnknownFieldsOnDecode() throws {
+    let data = """
+      {
+        "requiredPermissions": [],
+        "isFallback": false,
+        "result": { "status": "success" },
+        "metadata": {}
+      }
+      """.data(using: .utf8)!
+
+    assertActionAttemptDecodeRejects(data, codingPath: ["metadata"])
   }
 
   func testActionAttemptRequiresRequiredCodableFields() {

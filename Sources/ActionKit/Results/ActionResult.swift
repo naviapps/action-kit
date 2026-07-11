@@ -1,11 +1,3 @@
-/// A non-error reason why an action attempt could not run.
-public enum ActionSkipReason: String, Codable, Hashable, CaseIterable, Sendable {
-  /// No frontmost application was available for the requested action.
-  case noFrontmostApplication = "no-frontmost-application"
-  /// No focused window was available for the requested action.
-  case noFocusedWindow = "no-focused-window"
-}
-
 /// The result of one action attempt or a whole action.
 public enum ActionResult: Codable, Sendable, Equatable, Hashable {
   /// The action attempt completed successfully.
@@ -29,8 +21,12 @@ extension ActionResult {
     case failure
   }
 
-  /// Decodes an action result from its stable status payload.
+  /// Decodes an action result from its canonical status payload.
   public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(
+      allowed: [CodingKeys.status, .skipReason, .error],
+      debugName: "ActionResult"
+    )
     let container = try decoder.container(keyedBy: CodingKeys.self)
     let status = try container.decode(Status.self, forKey: .status)
 
@@ -47,7 +43,7 @@ extension ActionResult {
     }
   }
 
-  /// Encodes an action result as a stable status payload.
+  /// Encodes an action result as a canonical status payload.
   public func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
 

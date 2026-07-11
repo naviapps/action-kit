@@ -1,4 +1,4 @@
-/// A stable grouping for action catalogs.
+/// A grouping for action catalogs.
 ///
 /// Use categories to group and filter action kinds. Hosts remain responsible for display labels,
 /// ordering, and localization.

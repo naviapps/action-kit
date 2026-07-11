@@ -1,7 +1,7 @@
 package enum ActionMethod: Sendable, Equatable, Hashable {
   case keyEvent(ActionKeyStroke)
   case keyEventFromKeyboardShortcut(String)
-  case appleScript(source: String, requiresSystemEvents: Bool)
+  case appleScript(source: String, launchesSystemEvents: Bool, usesAccessibility: Bool)
   case openURL(String)
   case openFolder(String)
   case launchApplication(String)
@@ -10,6 +10,22 @@ package enum ActionMethod: Sendable, Equatable, Hashable {
   case terminateFrontmostApplication
   case screenCapture(arguments: [String])
   case windowing(WindowingExecution)
+}
+
+extension ActionMethod {
+  package var requiredPermissions: Set<ActionPermission> {
+    switch self {
+    case .keyEvent, .keyEventFromKeyboardShortcut, .windowing:
+      [.accessibility]
+    case .appleScript(_, _, let usesAccessibility):
+      usesAccessibility ? [.accessibility, .automation] : [.automation]
+    case .screenCapture:
+      [.screenRecording]
+    case .openURL, .openFolder, .launchApplication, .runShortcut, .hideFrontmostApplication,
+      .terminateFrontmostApplication:
+      []
+    }
+  }
 }
 
 package enum WindowingExecution: Sendable, Equatable, Hashable {

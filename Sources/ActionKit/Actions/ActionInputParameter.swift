@@ -26,6 +26,12 @@ public struct ActionInputParameter: Equatable, Hashable, Sendable {
     self.description = description
     self.exampleInput = exampleInput
   }
+
+  init(canonicalName name: String, description: String, exampleInput: ActionInput) {
+    self.name = name
+    self.description = description
+    self.exampleInput = exampleInput
+  }
 }
 
 extension ActionInputParameter: Codable {
@@ -37,6 +43,10 @@ extension ActionInputParameter: Codable {
 
   /// Decodes parameter metadata and rejects values that do not match parameter invariants.
   public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(
+      allowed: [CodingKeys.name, .description, .exampleInput],
+      debugName: "ActionInputParameter"
+    )
     let container = try decoder.container(keyedBy: CodingKeys.self)
     let name = try container.decode(String.self, forKey: .name)
     let description = try container.decode(String.self, forKey: .description)

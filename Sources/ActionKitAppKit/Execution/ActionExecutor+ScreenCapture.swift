@@ -2,22 +2,16 @@ import ActionKit
 
 extension ActionExecutor {
   func executeScreenCapture(arguments: [String]) async -> ActionResult {
-    guard dependencies.screenCaptureAccessChecker.hasAccess() else {
-      let actionError = ActionError.permissionDenied(.screenRecording)
-      configuration.log(.warning, actionError.diagnosticMessage)
-      await configuration.permissions.onScreenRecordingRequired()
-      return .failure(actionError)
-    }
-
     switch await dependencies.screenCaptureProcessRunner.run(arguments: arguments) {
     case .success:
       return .success
     case .failure(let error):
-      let actionError = ActionError.screenCaptureFailed(
-        Self.screenCaptureFailureMessage(terminationStatus: error.terminationStatus)
+      return failureResult(
+        .screenCaptureFailed(
+          Self.screenCaptureFailureMessage(terminationStatus: error.terminationStatus)
+        ),
+        logLevel: .error
       )
-      configuration.log(.error, actionError.diagnosticMessage)
-      return .failure(actionError)
     }
   }
 

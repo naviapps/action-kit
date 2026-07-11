@@ -1,17 +1,17 @@
 import XCTest
 
-@testable import ActionKitAppKit
+import ActionKitAppKit
 
-final class LiveSystemEventsLauncherTests: XCTestCase {
+final class SystemEventsLaunchCoordinatorTests: XCTestCase {
   func testEnsureRunningReturnsTrueWhenAlreadyRunning() async {
     let probe = SystemEventsLaunchProbe(isRunning: true)
-    let launcher = LiveSystemEventsLauncher(
+    let coordinator = SystemEventsLaunchCoordinator(
       isRunning: { await probe.isRunning },
       launch: { await probe.launch() },
       sleep: { _ in }
     )
 
-    let result = await launcher.ensureRunning()
+    let result = await coordinator.ensureRunning()
 
     XCTAssertTrue(result)
     let launchCount = await probe.currentLaunchCount()
@@ -20,13 +20,13 @@ final class LiveSystemEventsLauncherTests: XCTestCase {
 
   func testEnsureRunningLaunchesAndWaitsUntilRunning() async {
     let probe = SystemEventsLaunchProbe(isRunning: false)
-    let launcher = LiveSystemEventsLauncher(
+    let coordinator = SystemEventsLaunchCoordinator(
       isRunning: { await probe.isRunning },
       launch: { await probe.launch() },
       sleep: { _ in }
     )
 
-    let result = await launcher.ensureRunning()
+    let result = await coordinator.ensureRunning()
 
     XCTAssertTrue(result)
     let launchCount = await probe.currentLaunchCount()
@@ -35,13 +35,13 @@ final class LiveSystemEventsLauncherTests: XCTestCase {
 
   func testEnsureRunningPollsUntilSystemEventsBecomesRunning() async {
     let probe = PollingSystemEventsLaunchProbe(runningOnCheck: 3)
-    let launcher = LiveSystemEventsLauncher(
+    let coordinator = SystemEventsLaunchCoordinator(
       isRunning: { await probe.checkIsRunning() },
       launch: { await probe.launch() },
       sleep: { _ in await probe.sleep() }
     )
 
-    let result = await launcher.ensureRunning()
+    let result = await coordinator.ensureRunning()
 
     XCTAssertTrue(result)
     let launchCount = await probe.currentLaunchCount()
@@ -52,14 +52,14 @@ final class LiveSystemEventsLauncherTests: XCTestCase {
 
   func testConcurrentEnsureRunningSharesLaunchTask() async {
     let probe = SuspendedSystemEventsLaunchProbe()
-    let launcher = LiveSystemEventsLauncher(
+    let coordinator = SystemEventsLaunchCoordinator(
       isRunning: { await probe.checkIsRunning() },
       launch: { await probe.launch() },
       sleep: { _ in }
     )
 
-    async let first = launcher.ensureRunning()
-    async let second = launcher.ensureRunning()
+    async let first = coordinator.ensureRunning()
+    async let second = coordinator.ensureRunning()
 
     await probe.waitForLaunch()
     await probe.waitForRunningChecks(count: 2)
@@ -76,13 +76,13 @@ final class LiveSystemEventsLauncherTests: XCTestCase {
 
   func testEnsureRunningReturnsFalseWhenLaunchDoesNotMakeSystemEventsRunning() async {
     let probe = SystemEventsLaunchProbe(isRunning: false, launchMakesRunning: false)
-    let launcher = LiveSystemEventsLauncher(
+    let coordinator = SystemEventsLaunchCoordinator(
       isRunning: { await probe.isRunning },
       launch: { await probe.launch() },
       sleep: { _ in }
     )
 
-    let result = await launcher.ensureRunning()
+    let result = await coordinator.ensureRunning()
 
     XCTAssertFalse(result)
     let launchCount = await probe.currentLaunchCount()
@@ -91,14 +91,14 @@ final class LiveSystemEventsLauncherTests: XCTestCase {
 
   func testEnsureRunningRetriesAfterFailedLaunch() async {
     let probe = SystemEventsLaunchProbe(isRunning: false, launchResults: [false, true])
-    let launcher = LiveSystemEventsLauncher(
+    let coordinator = SystemEventsLaunchCoordinator(
       isRunning: { await probe.isRunning },
       launch: { await probe.launch() },
       sleep: { _ in }
     )
 
-    let first = await launcher.ensureRunning()
-    let second = await launcher.ensureRunning()
+    let first = await coordinator.ensureRunning()
+    let second = await coordinator.ensureRunning()
 
     XCTAssertFalse(first)
     XCTAssertTrue(second)

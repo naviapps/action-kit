@@ -6,10 +6,11 @@ extension Action {
 
   /// Decodes an action from its kind and optional input.
   public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(allowed: [CodingKeys.kind, .input], debugName: "Action")
     let container = try decoder.container(keyedBy: CodingKeys.self)
     let kind = try container.decode(ActionKind.self, forKey: .kind)
 
-    switch kind.inputShape {
+    switch kind.inputDescriptor.shape {
     case .none:
       self = try Self.decodeInputFreeAction(kind, container: container)
     case .string:
@@ -37,7 +38,7 @@ extension Action {
     codingPath: [CodingKey]
   ) throws {
     guard let input else {
-      if kind.inputShape == .none {
+      if !kind.inputDescriptor.requiresInput {
         return
       }
 
@@ -82,7 +83,7 @@ extension Action {
         debugDescription: "Action kind \(kind.identifier) does not accept input."
       )
     }
-    guard let action = kind.action() else {
+    guard let action = kind.makeAction() else {
       throw DecodingError.dataCorruptedError(
         forKey: .kind,
         in: container,
@@ -97,7 +98,7 @@ extension Action {
     input: ActionInput,
     container: KeyedDecodingContainer<CodingKeys>
   ) throws -> Action {
-    guard let action = kind.action(input: input) else {
+    guard let action = kind.makeAction(input: input) else {
       let description = "Action kind \(kind.identifier) requires valid input."
       throw DecodingError.dataCorruptedError(
         forKey: .input,

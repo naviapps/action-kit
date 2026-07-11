@@ -1,11 +1,76 @@
-import WindowKit
+import CoreGraphics
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class WindowPlacementRequestTests: XCTestCase {
+  func testNormalizesPlacementGeometryToExecutableRanges() {
+    XCTAssertEqual(
+      WindowPlacementRequest(
+        placement: .grid(
+          columns: 0,
+          rows: -2,
+          column: 4,
+          row: -1,
+          columnSpan: 0,
+          rowSpan: 9
+        )
+      ).placement,
+      .grid(columns: 1, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1)
+    )
+    XCTAssertEqual(
+      WindowPlacementRequest(
+        placement: .centered(widthRatio: .infinity, heightRatio: .nan)
+      ).placement,
+      .centered(widthRatio: 1, heightRatio: 0)
+    )
+  }
+
+  func testNormalizesInvalidScreenSelectors() {
+    XCTAssertEqual(
+      WindowPlacementRequest(
+        placement: .fill,
+        screen: .point(.init(x: .nan, y: -.infinity))
+      ).screen,
+      .point(.zero)
+    )
+    XCTAssertEqual(
+      WindowPlacementRequest(placement: .fill, screen: .orderedIndex(-1)).screen,
+      .orderedIndex(0)
+    )
+  }
+
+  func testStandaloneWindowValuesCanonicalizeAtCodableBoundaries() throws {
+    let placementData = try JSONEncoder().encode(
+      ActionWindowPlacement.centered(widthRatio: .infinity, heightRatio: -.infinity)
+    )
+    XCTAssertEqual(
+      try JSONDecoder().decode(ActionWindowPlacement.self, from: placementData),
+      .centered(widthRatio: 1, heightRatio: 0)
+    )
+
+    let screenData = try JSONEncoder().encode(
+      ActionWindowScreenTarget.point(
+        CGPoint(x: CGFloat.nan, y: CGFloat.infinity)
+      )
+    )
+    XCTAssertEqual(
+      try JSONDecoder().decode(ActionWindowScreenTarget.self, from: screenData),
+      .point(.zero)
+    )
+
+    let invalidGridData =
+      #"{"kind":"grid","columns":0,"rows":-1,"column":8,"row":-2,"columnSpan":0,"rowSpan":9}"#.data(
+        using: .utf8
+      )!
+    XCTAssertEqual(
+      try JSONDecoder().decode(ActionWindowPlacement.self, from: invalidGridData),
+      .grid(columns: 1, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1)
+    )
+  }
+
   func testUsesFocusedWindowDefaults() {
-    let request = WindowPlacementRequest(placement: .leftHalf)
+    let request = WindowPlacementRequest(placement: .fill)
 
     XCTAssertEqual(request.screen, .containingWindow)
     XCTAssertEqual(request.area, .visible)
@@ -13,14 +78,14 @@ final class WindowPlacementRequestTests: XCTestCase {
   }
 
   func testNormalizesInvalidInsets() {
-    XCTAssertEqual(WindowPlacementRequest(placement: .leftHalf, inset: -1).inset, 0)
-    XCTAssertEqual(WindowPlacementRequest(placement: .leftHalf, inset: .infinity).inset, 0)
-    XCTAssertEqual(WindowPlacementRequest(placement: .leftHalf, inset: .nan).inset, 0)
+    XCTAssertEqual(WindowPlacementRequest(placement: .fill, inset: -1).inset, 0)
+    XCTAssertEqual(WindowPlacementRequest(placement: .fill, inset: .infinity).inset, 0)
+    XCTAssertEqual(WindowPlacementRequest(placement: .fill, inset: .nan).inset, 0)
   }
 
   func testRoundTripsCodable() throws {
     let requests = [
-      WindowPlacementRequest(placement: .leftHalf),
+      WindowPlacementRequest(placement: .fill),
       WindowPlacementRequest(
         placement: .grid(
           columns: 2,
@@ -41,7 +106,7 @@ final class WindowPlacementRequestTests: XCTestCase {
         inset: 12
       ),
       WindowPlacementRequest(
-        placement: .rightTwoThirds,
+        placement: .grid(columns: 3, rows: 1, column: 1, row: 0, columnSpan: 2, rowSpan: 1),
         screen: .point(.init(x: 10, y: 20))
       ),
     ]
@@ -57,8 +122,46 @@ final class WindowPlacementRequestTests: XCTestCase {
     }
   }
 
+  func testPublicWindowValueTypesRoundTripCodable() throws {
+    let placements: [ActionWindowPlacement] = [
+      .fill,
+      .grid(columns: 2, rows: 3, column: 1, row: 2, columnSpan: 1, rowSpan: 1),
+      .centered(widthRatio: 0.7, heightRatio: 0.5),
+    ]
+    let screens: [ActionWindowScreenTarget] = [
+      .main,
+      .containingWindow,
+      .orderedIndex(2),
+      .displayIdentifier(7),
+      .point(.init(x: 10, y: 20)),
+    ]
+    let areas: [ActionWindowScreenArea] = [.visible, .full]
+
+    let encoder = JSONEncoder()
+    let decoder = JSONDecoder()
+
+    for placement in placements {
+      XCTAssertEqual(
+        try decoder.decode(ActionWindowPlacement.self, from: encoder.encode(placement)),
+        placement
+      )
+    }
+    for screen in screens {
+      XCTAssertEqual(
+        try decoder.decode(ActionWindowScreenTarget.self, from: encoder.encode(screen)),
+        screen
+      )
+    }
+    for area in areas {
+      XCTAssertEqual(
+        try decoder.decode(ActionWindowScreenArea.self, from: encoder.encode(area)),
+        area
+      )
+    }
+  }
+
   func testDecodingNormalizesInvalidInsets() throws {
-    let encoded = try JSONEncoder().encode(WindowPlacementRequest(placement: .leftHalf))
+    let encoded = try JSONEncoder().encode(WindowPlacementRequest(placement: .fill))
     var payload = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
     payload["inset"] = -1
     let data = try JSONSerialization.data(withJSONObject: payload)
@@ -69,7 +172,7 @@ final class WindowPlacementRequestTests: XCTestCase {
   }
 
   func testDecodingUsesFocusedWindowDefaultsWhenOptionalFieldsAreOmitted() throws {
-    let encoded = try JSONEncoder().encode(WindowPlacementRequest(placement: .leftHalf))
+    let encoded = try JSONEncoder().encode(WindowPlacementRequest(placement: .fill))
     var payload = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
     payload.removeValue(forKey: "screen")
     payload.removeValue(forKey: "area")
@@ -78,12 +181,12 @@ final class WindowPlacementRequestTests: XCTestCase {
 
     XCTAssertEqual(
       try JSONDecoder().decode(WindowPlacementRequest.self, from: data),
-      WindowPlacementRequest(placement: .leftHalf)
+      WindowPlacementRequest(placement: .fill)
     )
   }
 
   func testDecodingRejectsNullFocusedWindowDefaults() throws {
-    let encoded = try JSONEncoder().encode(WindowPlacementRequest(placement: .leftHalf))
+    let encoded = try JSONEncoder().encode(WindowPlacementRequest(placement: .fill))
 
     for key in ["screen", "area", "inset"] {
       var payload = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
@@ -97,83 +200,51 @@ final class WindowPlacementRequestTests: XCTestCase {
     }
   }
 
-  func testUsesStableCodableKeys() throws {
-    let object = try encodedObject(WindowPlacementRequest(placement: .leftHalf))
+  func testDecodingRejectsUnknownTopLevelFields() {
+    let data = Data(
+      """
+      {
+        "placement": { "kind": "fill" },
+        "screen": { "kind": "containing-window" },
+        "area": "visible",
+        "inset": 0,
+        "metadata": {}
+      }
+      """.utf8
+    )
+
+    XCTAssertThrowsError(try JSONDecoder().decode(WindowPlacementRequest.self, from: data))
+  }
+
+  func testUsesCanonicalCodableKeys() throws {
+    let object = try encodedObject(WindowPlacementRequest(placement: .fill))
 
     let placement = try XCTUnwrap(object["placement"] as? [String: Any])
     let screen = try XCTUnwrap(object["screen"] as? [String: Any])
 
     XCTAssertEqual(Set(object.keys), ["placement", "screen", "area", "inset"])
-    XCTAssertEqual(placement["kind"] as? String, "left-half")
+    XCTAssertEqual(placement["kind"] as? String, "fill")
     XCTAssertEqual(screen["kind"] as? String, "containing-window")
     XCTAssertEqual(object["area"] as? String, "visible")
     XCTAssertEqual(object["inset"] as? Double, 0)
   }
 
-  func testEncodesStableSimplePlacementKinds() throws {
-    let cases: [(WindowPlacement, String)] = [
-      (.fill, "fill"),
-      (.leftHalf, "left-half"),
-      (.rightHalf, "right-half"),
-      (.topHalf, "top-half"),
-      (.bottomHalf, "bottom-half"),
-      (.topLeftQuarter, "top-left-quarter"),
-      (.topRightQuarter, "top-right-quarter"),
-      (.bottomLeftQuarter, "bottom-left-quarter"),
-      (.bottomRightQuarter, "bottom-right-quarter"),
-      (.leftThird, "left-third"),
-      (.centerThird, "center-third"),
-      (.rightThird, "right-third"),
-      (.topThird, "top-third"),
-      (.middleThird, "middle-third"),
-      (.bottomThird, "bottom-third"),
-      (.leftTwoThirds, "left-two-thirds"),
-      (.rightTwoThirds, "right-two-thirds"),
-      (.topTwoThirds, "top-two-thirds"),
-      (.bottomTwoThirds, "bottom-two-thirds"),
-    ]
+  func testEncodesCanonicalFillPlacementPayload() throws {
+    let object = try encodedObject(WindowPlacementRequest(placement: .fill))
+    let payload = try XCTUnwrap(object["placement"] as? [String: Any])
 
-    for (placement, expectedKind) in cases {
-      let object = try encodedObject(WindowPlacementRequest(placement: placement))
-      let payload = try XCTUnwrap(object["placement"] as? [String: Any])
-
-      XCTAssertEqual(Set(payload.keys), ["kind"])
-      XCTAssertEqual(payload["kind"] as? String, expectedKind)
-    }
+    XCTAssertEqual(Set(payload.keys), ["kind"])
+    XCTAssertEqual(payload["kind"] as? String, "fill")
   }
 
-  func testDecodesStableSimplePlacementKinds() throws {
-    let cases: [(String, WindowPlacement)] = [
-      ("fill", .fill),
-      ("left-half", .leftHalf),
-      ("right-half", .rightHalf),
-      ("top-half", .topHalf),
-      ("bottom-half", .bottomHalf),
-      ("top-left-quarter", .topLeftQuarter),
-      ("top-right-quarter", .topRightQuarter),
-      ("bottom-left-quarter", .bottomLeftQuarter),
-      ("bottom-right-quarter", .bottomRightQuarter),
-      ("left-third", .leftThird),
-      ("center-third", .centerThird),
-      ("right-third", .rightThird),
-      ("top-third", .topThird),
-      ("middle-third", .middleThird),
-      ("bottom-third", .bottomThird),
-      ("left-two-thirds", .leftTwoThirds),
-      ("right-two-thirds", .rightTwoThirds),
-      ("top-two-thirds", .topTwoThirds),
-      ("bottom-two-thirds", .bottomTwoThirds),
-    ]
-
-    for (kind, placement) in cases {
-      XCTAssertEqual(
-        try decodedRequest(placementPayload: ["kind": kind]),
-        WindowPlacementRequest(placement: placement)
-      )
-    }
+  func testDecodesCanonicalFillPlacementPayload() throws {
+    XCTAssertEqual(
+      try decodedRequest(placementPayload: ["kind": "fill"]),
+      WindowPlacementRequest(placement: .fill)
+    )
   }
 
-  func testEncodesStableAssociatedPlacementPayloads() throws {
+  func testEncodesCanonicalAssociatedPlacementPayloads() throws {
     let gridObject = try encodedObject(
       WindowPlacementRequest(
         placement: .grid(
@@ -211,7 +282,7 @@ final class WindowPlacementRequestTests: XCTestCase {
     XCTAssertEqual(centered["heightRatio"] as? Double, 0.5)
   }
 
-  func testDecodesStableAssociatedPlacementPayloads() throws {
+  func testDecodesCanonicalAssociatedPlacementPayloads() throws {
     XCTAssertEqual(
       try decodedRequest(
         placementPayload: [
@@ -248,8 +319,48 @@ final class WindowPlacementRequestTests: XCTestCase {
     )
   }
 
-  func testEncodesStableScreenPayloads() throws {
-    let cases: [(WindowScreenTarget, String, Set<String>)] = [
+  func testDecodingRejectsPlacementAssociatedFieldsForWrongKind() {
+    let payloads: [[String: Any]] = [
+      [
+        "kind": "fill",
+        "columns": 2,
+      ],
+      [
+        "kind": "grid",
+        "columns": 2,
+        "rows": 3,
+        "column": 1,
+        "row": 2,
+        "columnSpan": 1,
+        "rowSpan": 1,
+        "widthRatio": 0.7,
+      ],
+      [
+        "kind": "centered",
+        "widthRatio": 0.7,
+        "heightRatio": 0.5,
+        "column": 1,
+      ],
+    ]
+
+    for payload in payloads {
+      XCTAssertThrowsError(try decodedRequest(placementPayload: payload))
+    }
+  }
+
+  func testDecodingRejectsUnknownPlacementFields() {
+    XCTAssertThrowsError(
+      try decodedRequest(
+        placementPayload: [
+          "kind": "fill",
+          "metadata": [:],
+        ]
+      )
+    )
+  }
+
+  func testEncodesCanonicalScreenPayloads() throws {
+    let cases: [(ActionWindowScreenTarget, String, Set<String>)] = [
       (.main, "main", ["kind"]),
       (.containingWindow, "containing-window", ["kind"]),
       (.orderedIndex(2), "ordered-index", ["kind", "orderedIndex"]),
@@ -258,7 +369,7 @@ final class WindowPlacementRequestTests: XCTestCase {
     ]
 
     for (screen, expectedKind, expectedKeys) in cases {
-      let object = try encodedObject(WindowPlacementRequest(placement: .leftHalf, screen: screen))
+      let object = try encodedObject(WindowPlacementRequest(placement: .fill, screen: screen))
       let payload = try XCTUnwrap(object["screen"] as? [String: Any])
 
       XCTAssertEqual(Set(payload.keys), expectedKeys)
@@ -266,8 +377,8 @@ final class WindowPlacementRequestTests: XCTestCase {
     }
   }
 
-  func testDecodesStableScreenPayloads() throws {
-    let cases: [([String: Any], WindowScreenTarget)] = [
+  func testDecodesCanonicalScreenPayloads() throws {
+    let cases: [([String: Any], ActionWindowScreenTarget)] = [
       (["kind": "main"], .main),
       (["kind": "containing-window"], .containingWindow),
       (["kind": "ordered-index", "orderedIndex": 2], .orderedIndex(2)),
@@ -278,12 +389,51 @@ final class WindowPlacementRequestTests: XCTestCase {
     for (payload, screen) in cases {
       XCTAssertEqual(
         try decodedRequest(screenPayload: payload),
-        WindowPlacementRequest(placement: .leftHalf, screen: screen)
+        WindowPlacementRequest(placement: .fill, screen: screen)
       )
     }
   }
 
-  func testEncodesStableScreenAssociatedValues() throws {
+  func testDecodingRejectsScreenAssociatedFieldsForWrongKind() {
+    let payloads: [[String: Any]] = [
+      [
+        "kind": "main",
+        "x": 10,
+      ],
+      [
+        "kind": "containing-window",
+        "orderedIndex": 2,
+      ],
+      [
+        "kind": "point",
+        "x": 10,
+        "y": 20,
+        "displayIdentifier": 7,
+      ],
+      [
+        "kind": "ordered-index",
+        "orderedIndex": 2,
+        "x": 10,
+      ],
+    ]
+
+    for payload in payloads {
+      XCTAssertThrowsError(try decodedRequest(screenPayload: payload))
+    }
+  }
+
+  func testDecodingRejectsUnknownScreenFields() {
+    XCTAssertThrowsError(
+      try decodedRequest(
+        screenPayload: [
+          "kind": "containing-window",
+          "metadata": [:],
+        ]
+      )
+    )
+  }
+
+  func testEncodesCanonicalScreenAssociatedValues() throws {
     let orderedIndex = try screenPayload(for: .orderedIndex(2))
     XCTAssertEqual(orderedIndex["orderedIndex"] as? Int, 2)
 
@@ -295,26 +445,26 @@ final class WindowPlacementRequestTests: XCTestCase {
     XCTAssertEqual((point["y"] as? NSNumber)?.doubleValue, 20)
   }
 
-  func testEncodesStableAreaValues() throws {
-    let visible = try encodedObject(WindowPlacementRequest(placement: .leftHalf, area: .visible))
+  func testEncodesCanonicalAreaValues() throws {
+    let visible = try encodedObject(WindowPlacementRequest(placement: .fill, area: .visible))
     XCTAssertEqual(visible["area"] as? String, "visible")
 
-    let full = try encodedObject(WindowPlacementRequest(placement: .leftHalf, area: .full))
+    let full = try encodedObject(WindowPlacementRequest(placement: .fill, area: .full))
     XCTAssertEqual(full["area"] as? String, "full")
   }
 
-  func testDecodesStableAreaValues() throws {
+  func testDecodesCanonicalAreaValues() throws {
     XCTAssertEqual(
       try decodedRequest(area: "visible"),
-      WindowPlacementRequest(placement: .leftHalf, area: .visible)
+      WindowPlacementRequest(placement: .fill, area: .visible)
     )
     XCTAssertEqual(
       try decodedRequest(area: "full"),
-      WindowPlacementRequest(placement: .leftHalf, area: .full)
+      WindowPlacementRequest(placement: .fill, area: .full)
     )
   }
 
-  func testDecodesStableCodablePayload() throws {
+  func testDecodesCanonicalCodablePayload() throws {
     let data = Data(
       """
       {
@@ -377,13 +527,16 @@ final class WindowPlacementRequestTests: XCTestCase {
     return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
   }
 
-  private func screenPayload(for screen: WindowScreenTarget) throws -> [String: Any] {
-    let object = try encodedObject(WindowPlacementRequest(placement: .leftHalf, screen: screen))
+  private func screenPayload(for screen: ActionWindowScreenTarget) throws -> [String: Any] {
+    let object = try encodedObject(
+      WindowPlacementRequest(
+        placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1),
+        screen: screen))
     return try XCTUnwrap(object["screen"] as? [String: Any])
   }
 
   private func decodedRequest(
-    placementPayload: [String: Any] = ["kind": "left-half"],
+    placementPayload: [String: Any] = ["kind": "fill"],
     screenPayload: [String: Any] = ["kind": "containing-window"],
     area: String = "visible",
     inset: Double = 0

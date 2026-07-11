@@ -27,9 +27,7 @@ extension ActionExecutor {
     case .noFrontmostApplication:
       return .skipped(.noFrontmostApplication)
     case .failed:
-      let actionError = ActionError.internalError(failureMessage)
-      configuration.log(.error, actionError.diagnosticMessage)
-      return .failure(actionError)
+      return internalErrorResult(failureMessage)
     }
   }
 }

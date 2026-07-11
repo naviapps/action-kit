@@ -1,26 +1,8 @@
 import Foundation
 
-/// Stable categories for execution failures.
-public enum ActionErrorCode: String, Codable, Hashable, CaseIterable, Sendable {
-  /// The action input was empty, malformed, or unsupported.
-  case invalidInput = "invalid-input"
-  /// A required macOS permission was denied or unavailable.
-  case permissionDenied = "permission-denied"
-  /// A requested URL, file path, application, or resource was not found.
-  case notFound = "not-found"
-  /// The system failed to open or launch a requested resource.
-  case openFailed = "open-failed"
-  /// AppleScript execution failed.
-  case appleScriptFailed = "apple-script-failed"
-  /// Screen capture execution failed.
-  case screenCaptureFailed = "screen-capture-failed"
-  /// An unexpected internal execution failure occurred.
-  case internalError = "internal-error"
-}
-
 /// A structured action execution error.
 public struct ActionError: Codable, Error, Sendable, Equatable, Hashable {
-  /// The stable error category.
+  /// The canonical error category.
   public let code: ActionErrorCode
   /// A diagnostic message intended for logs or developer-facing UI.
   public let diagnosticMessage: String
@@ -59,6 +41,15 @@ extension ActionError {
 
   /// Decodes an action error and rejects payload fields that do not match the error code.
   public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(
+      allowed: [
+        CodingKeys.code,
+        .diagnosticMessage,
+        .permission,
+        .appleScriptErrorNumber,
+      ],
+      debugName: "ActionError"
+    )
     let container = try decoder.container(keyedBy: CodingKeys.self)
     let code = try container.decode(ActionErrorCode.self, forKey: .code)
     let diagnosticMessage = try container.decode(String.self, forKey: .diagnosticMessage)
@@ -69,8 +60,11 @@ extension ActionError {
         debugDescription: "diagnosticMessage must not be empty."
       )
     }
-    let permission = try container.decodeIfPresent(ActionPermission.self, forKey: .permission)
-    let appleScriptErrorNumber = try container.decodeIfPresent(
+    let permission = try container.decodeIfPresentRejectingNull(
+      ActionPermission.self,
+      forKey: .permission
+    )
+    let appleScriptErrorNumber = try container.decodeIfPresentRejectingNull(
       Int.self,
       forKey: .appleScriptErrorNumber
     )
@@ -102,7 +96,7 @@ extension ActionError {
     )
   }
 
-  /// Encodes an action error as a stable structured payload.
+  /// Encodes an action error as a canonical structured payload.
   public func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(code, forKey: .code)

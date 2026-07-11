@@ -2,7 +2,7 @@ extension ActionKind {
   /// Creates an executable action from this kind when no host-supplied input is required.
   ///
   /// - Returns: An executable action, or `nil` when this kind requires host-supplied input.
-  public func action() -> Action? {
+  public func makeAction() -> Action? {
     switch self {
     case .copy: .copy
     case .paste: .paste
@@ -36,14 +36,6 @@ extension ActionKind {
     case .captureScreenFull: .captureScreenFull
     case .captureScreenSelection: .captureScreenSelection
     case .captureScreenWindow: .captureScreenWindow
-    case .windowMaximize: .windowMaximize
-    case .windowLeftHalf: .windowLeftHalf
-    case .windowRightHalf: .windowRightHalf
-    case .windowTopHalf: .windowTopHalf
-    case .windowBottomHalf: .windowBottomHalf
-    case .windowCenter: .windowCenter
-    case .windowMoveToNextScreen: .windowMoveToNextScreen
-    case .windowMoveToPreviousScreen: .windowMoveToPreviousScreen
     case .windowPlacement: nil
     case .windowMove: nil
     }
@@ -54,7 +46,7 @@ extension ActionKind {
   /// - Parameter input: The host-supplied value required by this action kind.
   /// - Returns: An executable action, or `nil` when this kind does not accept input or the input
   ///   shape does not match.
-  public func action(input: ActionInput) -> Action? {
+  public func makeAction(input: ActionInput) -> Action? {
     switch self {
     case .keyboardShortcut:
       guard let normalized = Self.normalizedString(from: input) else { return nil }
@@ -82,8 +74,7 @@ extension ActionKind {
       .missionControl, .showDesktop, .lockScreen, .sleepMac, .missionControlNextSpace,
       .missionControlPreviousSpace, .missionControlAppExpose, .brightnessUp, .brightnessDown,
       .toggleAppearance, .showNotificationCenter, .captureScreenFull, .captureScreenSelection,
-      .captureScreenWindow, .windowMaximize, .windowLeftHalf, .windowRightHalf, .windowTopHalf,
-      .windowBottomHalf, .windowCenter, .windowMoveToNextScreen, .windowMoveToPreviousScreen:
+      .captureScreenWindow:
       return nil
     }
   }

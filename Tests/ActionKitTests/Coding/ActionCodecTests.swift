@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionCodecTests: XCTestCase {
   func testCurrentVersionMatchesEncodedEnvelopeVersion() throws {
@@ -38,6 +38,22 @@ final class ActionCodecTests: XCTestCase {
     XCTAssertThrowsError(try ActionCodec.decode(data)) { error in
       XCTAssertEqual(error as? ActionCodecError, .unsupportedVersion(999))
     }
+  }
+
+  func testDecodeRejectsUnknownEnvelopeFields() {
+    let data = Data(
+      """
+      {
+        "version": 1,
+        "action": {
+          "kind": "action.editing.copy"
+        },
+        "metadata": {}
+      }
+      """.utf8
+    )
+
+    XCTAssertThrowsError(try ActionCodec.decode(data))
   }
 
   func testActionCodecErrorDescribesUnsupportedVersion() {

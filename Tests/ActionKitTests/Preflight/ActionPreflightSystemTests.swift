@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionPreflightSystemTests: XCTestCase {
   func testShowDesktopPlanIsAppleScriptThenKeyEventFallback() {
@@ -12,12 +12,17 @@ final class ActionPreflightSystemTests: XCTestCase {
     )
 
     guard
-      case .appleScript(source: let source, requiresSystemEvents: let requiresSystemEvents) =
+      case .appleScript(
+        source: let source,
+        launchesSystemEvents: let launchesSystemEvents,
+        usesAccessibility: let usesAccessibility
+      ) =
         plan.steps[0].method
     else {
       return XCTFail("Expected appleScript primary")
     }
-    XCTAssertTrue(requiresSystemEvents)
+    XCTAssertTrue(launchesSystemEvents)
+    XCTAssertTrue(usesAccessibility)
     XCTAssertTrue(source.contains("System Events"))
     XCTAssertTrue(source.contains("key code 103"))
     XCTAssertEqual(plan.steps[0].requiredPermissions, [.accessibility, .automation])
@@ -62,12 +67,17 @@ final class ActionPreflightSystemTests: XCTestCase {
         .init(primary: [.accessibility, .automation], fallback: [.accessibility])
       )
       guard
-        case .appleScript(source: let source, requiresSystemEvents: let requiresSystemEvents) =
+        case .appleScript(
+          source: let source,
+          launchesSystemEvents: let launchesSystemEvents,
+          usesAccessibility: let usesAccessibility
+        ) =
           plan.steps[0].method
       else {
         return XCTFail("Expected appleScript primary for \(expectation.action)")
       }
-      XCTAssertTrue(requiresSystemEvents)
+      XCTAssertTrue(launchesSystemEvents)
+      XCTAssertTrue(usesAccessibility)
       XCTAssertTrue(source.contains(appleScriptSnippet))
       XCTAssertEqual(plan.steps[0].requiredPermissions, [.accessibility, .automation])
       assertKeyEventStep(
@@ -88,12 +98,17 @@ final class ActionPreflightSystemTests: XCTestCase {
     )
 
     guard
-      case .appleScript(source: let source, requiresSystemEvents: let requiresSystemEvents) =
+      case .appleScript(
+        source: let source,
+        launchesSystemEvents: let launchesSystemEvents,
+        usesAccessibility: let usesAccessibility
+      ) =
         plan.steps[0].method
     else {
       return XCTFail("Expected appleScript primary")
     }
-    XCTAssertFalse(requiresSystemEvents)
+    XCTAssertFalse(launchesSystemEvents)
+    XCTAssertFalse(usesAccessibility)
     XCTAssertTrue(source.contains("Mission Control"))
 
     assertKeyEventStep(
@@ -115,12 +130,17 @@ final class ActionPreflightSystemTests: XCTestCase {
       XCTAssertEqual(plan.steps.count, 1)
       XCTAssertEqual(plan.permissionRequirements, .init(primary: [.automation], fallback: []))
       guard
-        case .appleScript(source: let source, requiresSystemEvents: let requiresSystemEvents) =
+        case .appleScript(
+          source: let source,
+          launchesSystemEvents: let launchesSystemEvents,
+          usesAccessibility: let usesAccessibility
+        ) =
           plan.steps.first?.method
       else {
         return XCTFail("Expected appleScript for \(action)")
       }
-      XCTAssertTrue(requiresSystemEvents)
+      XCTAssertTrue(launchesSystemEvents)
+      XCTAssertFalse(usesAccessibility)
       XCTAssertTrue(source.contains("System Events"))
       XCTAssertTrue(source.contains(appleScriptSnippet))
     }
@@ -154,9 +174,5 @@ final class ActionPreflightSystemTests: XCTestCase {
       }
       XCTAssertEqual(arguments, expectation.arguments)
     }
-  }
-
-  func testSystemPlanDoesNotCreatePlaceholderStepsForUnsupportedActions() {
-    XCTAssertNil(ActionPreflight.systemPlan(for: .copy))
   }
 }
