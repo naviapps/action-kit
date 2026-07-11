@@ -1,13 +1,25 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionPreflightPermissionHintTests: XCTestCase {
-  func testPlansForActionKindsUseDescriptorExampleActions() throws {
+  func testEveryActionKindProducesAtLeastOneExecutionStep() {
     for kind in ActionKind.allCases {
-      let action = try XCTUnwrap(Self.sampleAction(for: kind), "\(kind) should have sample action")
+      let action: Action?
+      if let exampleInput = kind.inputDescriptor.exampleInput {
+        action = kind.makeAction(input: exampleInput)
+      } else {
+        action = kind.makeAction()
+      }
 
-      XCTAssertEqual(ActionPreflight.plan(forKind: kind), ActionPreflight.plan(for: action))
+      guard let action else {
+        XCTFail("Could not create the canonical sample action for \(kind.identifier)")
+        continue
+      }
+      XCTAssertFalse(
+        ActionPreflight.plan(for: action).steps.isEmpty,
+        "Missing execution plan for \(kind.identifier)"
+      )
     }
   }
 
@@ -38,7 +50,7 @@ final class ActionPreflightPermissionHintTests: XCTestCase {
       [.init(permission: .accessibility, reason: .accessibilityKeyEvent)]
     )
     XCTAssertEqual(
-      ActionPreflight.permissionHints(forKind: ActionKind.windowMaximize),
+      ActionPreflight.permissionHints(forKind: ActionKind.windowPlacement),
       [.init(permission: .accessibility, reason: .accessibilityWindowing)]
     )
     XCTAssertEqual(
@@ -76,30 +88,5 @@ final class ActionPreflightPermissionHintTests: XCTestCase {
         .init(permission: .automation, reason: .automationAppleEvents),
       ]
     )
-  }
-
-  func testPermissionHintsUseStablePermissionOrderWithinStep() {
-    let plan = ActionPlan(steps: [
-      .init(
-        method: .keyEvent(virtualKeyCode: 0),
-        requiredPermissions: [.screenRecording, .automation, .accessibility]
-      )
-    ])
-
-    XCTAssertEqual(
-      ActionPreflight.permissionHints(for: plan),
-      [
-        .init(permission: .accessibility, reason: .accessibilityKeyEvent),
-        .init(permission: .automation, reason: .automationAppleEvents),
-        .init(permission: .screenRecording, reason: .screenRecordingCapture),
-      ]
-    )
-  }
-
-  private static func sampleAction(for kind: ActionKind) -> Action? {
-    if let exampleInput = kind.inputDescriptor.exampleInput {
-      return kind.action(input: exampleInput)
-    }
-    return kind.action()
   }
 }

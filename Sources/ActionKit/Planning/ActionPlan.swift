@@ -1,15 +1,16 @@
 package struct ActionStep: Sendable, Equatable, Hashable {
   package let method: ActionMethod
-  package let requiredPermissions: Set<ActionPermission>
   package let isFallback: Bool
+
+  package var requiredPermissions: Set<ActionPermission> {
+    method.requiredPermissions
+  }
 
   package init(
     method: ActionMethod,
-    requiredPermissions: Set<ActionPermission> = [],
     isFallback: Bool = false
   ) {
     self.method = method
-    self.requiredPermissions = requiredPermissions
     self.isFallback = isFallback
   }
 }

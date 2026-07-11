@@ -2,10 +2,10 @@ import ApplicationServices
 import Carbon
 import Foundation
 
-enum KeyboardShortcutParser {
-  struct ParsedShortcut: Equatable, Sendable {
-    let virtualKey: CGKeyCode
-    let modifiers: CGEventFlags
+package enum KeyboardShortcutParser {
+  package struct ParsedShortcut: Equatable, Sendable {
+    package let virtualKey: CGKeyCode
+    package let modifiers: CGEventFlags
   }
 
   private struct KeyEquivalent: Sendable {
@@ -20,7 +20,7 @@ enum KeyboardShortcutParser {
 
   private static let normalizationLocale = Locale(identifier: "en_US_POSIX")
 
-  private static let modifierAliases: [String: CGEventFlags] = [
+  private static let modifierTokens: [String: CGEventFlags] = [
     "⌘": .maskCommand,
     "⇧": .maskShift,
     "⌥": .maskAlternate,
@@ -102,7 +102,7 @@ enum KeyboardShortcutParser {
     "f18": .init(kVK_F18), "f19": .init(kVK_F19), "f20": .init(kVK_F20),
   ]
 
-  static func parse(_ shortcut: String) -> ParsedShortcut? {
+  package static func parse(_ shortcut: String) -> ParsedShortcut? {
     let normalized =
       shortcut
       .lowercased(with: normalizationLocale)
@@ -120,7 +120,7 @@ enum KeyboardShortcutParser {
 
     var modifiers = symbolModifiers
     for token in tokens.dropLast() {
-      guard let modifier = modifierAliases[token] else { return nil }
+      guard let modifier = modifierTokens[token] else { return nil }
       guard modifiers.insert(modifier).inserted else { return nil }
     }
     modifiers.formUnion(equivalent.impliedModifiers)
@@ -133,7 +133,7 @@ enum KeyboardShortcutParser {
     var remaining = shortcut[...]
     var modifiers: CGEventFlags = []
     while let first = remaining.first,
-      let modifier = modifierAliases[String(first)]
+      let modifier = modifierTokens[String(first)]
     {
       guard modifiers.insert(modifier).inserted else { return nil }
       remaining.removeFirst()
@@ -186,7 +186,7 @@ enum KeyboardShortcutParser {
 
     for keyStartIndex in parts.indices {
       let modifierTokens = parts[..<keyStartIndex]
-      guard modifierTokens.allSatisfy({ modifierAliases[$0] != nil }) else { continue }
+      guard modifierTokens.allSatisfy({ Self.modifierTokens[$0] != nil }) else { continue }
 
       let keyToken = parts[keyStartIndex...].joined(separator: "-")
       if keyEquivalents[keyToken] != nil {

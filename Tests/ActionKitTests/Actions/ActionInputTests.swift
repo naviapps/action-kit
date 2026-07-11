@@ -1,38 +1,20 @@
-import WindowKit
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionInputTests: XCTestCase {
-  func testNormalizedStringTrimsWhitespaceAndNewlines() {
-    XCTAssertEqual(ActionInput.normalizedString("  https://example.com\n"), "https://example.com")
-  }
-
-  func testNormalizedStringRejectsBlankValues() {
-    XCTAssertNil(ActionInput.normalizedString(" \n\t "))
-  }
-
   func testInputShapeMatchesPayload() {
     XCTAssertEqual(ActionInput.string("value").shape, .string)
-    XCTAssertEqual(ActionInput.windowPlacement(.init(placement: .leftHalf)).shape, .windowPlacement)
+    XCTAssertEqual(
+      ActionInput.windowPlacement(
+        .init(placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1))
+      ).shape, .windowPlacement)
     XCTAssertEqual(ActionInput.windowMove(.init(direction: .next)).shape, .windowMove)
   }
 
-  func testInputNormalizationMatchesPayloadRules() {
-    XCTAssertEqual(ActionInput.string("  value\n").normalized, .string("value"))
-    XCTAssertNil(ActionInput.string(" \n\t ").normalized)
-    XCTAssertEqual(
-      ActionInput.windowPlacement(.init(placement: .leftHalf)).normalized,
-      .windowPlacement(.init(placement: .leftHalf))
-    )
-    XCTAssertEqual(
-      ActionInput.windowMove(.init(direction: .next)).normalized,
-      .windowMove(.init(direction: .next))
-    )
-  }
-
   func testInputIsHashable() {
-    let placement = WindowPlacementRequest(placement: .leftHalf)
+    let placement = WindowPlacementRequest(
+      placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1))
     let inputs: Set<ActionInput> = [
       .string("https://example.com"),
       .windowPlacement(placement),

@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionKindCategoryTests: XCTestCase {
   func testActionKindCategoriesUseEveryPublicCategory() {
@@ -45,14 +45,6 @@ final class ActionKindCategoryTests: XCTestCase {
         .captureScreenFull: .system,
         .captureScreenSelection: .system,
         .captureScreenWindow: .system,
-        .windowMaximize: .window,
-        .windowLeftHalf: .window,
-        .windowRightHalf: .window,
-        .windowTopHalf: .window,
-        .windowBottomHalf: .window,
-        .windowCenter: .window,
-        .windowMoveToNextScreen: .window,
-        .windowMoveToPreviousScreen: .window,
         .windowPlacement: .window,
         .windowMove: .window,
       ]

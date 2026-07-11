@@ -3,8 +3,8 @@ import Foundation
 
 extension ActionExecutor {
   func executeOpenFolder(_ path: String) async -> ActionResult {
-    guard let path = ActionInput.normalizedString(path) else {
-      return invalidInput("Folder path is empty")
+    guard let path = normalizedRequiredString(path) else {
+      return invalidInputResult("Folder path is empty")
     }
 
     let expanded = (path as NSString).expandingTildeInPath
@@ -14,36 +14,36 @@ extension ActionExecutor {
     guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
       isDirectory.boolValue
     else {
-      return notFound("Folder does not exist")
+      return notFoundResult("Folder does not exist")
     }
 
     let ok = await dependencies.workspace.open(url)
     guard ok else {
-      return openFailed("Failed to open folder")
+      return openFailedResult("Failed to open folder")
     }
     return .success
   }
 
   func executeOpenURL(_ urlString: String) async -> ActionResult {
-    guard let urlString = ActionInput.normalizedString(urlString),
+    guard let urlString = normalizedRequiredString(urlString),
       let url = URL(string: urlString),
       isValidOpenURL(url)
     else {
-      return invalidInput("Invalid URL")
+      return invalidInputResult("Invalid URL")
     }
 
     let ok = await dependencies.workspace.open(url)
     guard ok else {
-      return openFailed("Failed to open URL")
+      return openFailedResult("Failed to open URL")
     }
     return .success
   }
 
   func executeLaunchApplication(_ applicationIdentifierOrPath: String) async -> ActionResult {
     guard
-      let applicationIdentifierOrPath = ActionInput.normalizedString(applicationIdentifierOrPath)
+      let applicationIdentifierOrPath = normalizedRequiredString(applicationIdentifierOrPath)
     else {
-      return invalidInput("Empty application name, bundle identifier, or .app bundle path")
+      return invalidInputResult("Empty application name, bundle identifier, or .app bundle path")
     }
 
     if let pathResult = applicationPathResult(for: applicationIdentifierOrPath) {
@@ -52,9 +52,9 @@ extension ActionExecutor {
         return await openApplication(
           at: appURL, failureMessage: "Failed to launch application at path")
       case .missing:
-        return notFound("Application path does not exist")
+        return notFoundResult("Application path does not exist")
       case .invalid(let message):
-        return invalidInput(message)
+        return invalidInputResult(message)
       }
     }
 
@@ -65,12 +65,12 @@ extension ActionExecutor {
       )
     }
 
-    return notFound("Unable to resolve application")
+    return notFoundResult("Unable to resolve application")
   }
 
   func executeRunShortcut(_ shortcutName: String) async -> ActionResult {
-    guard let shortcutName = ActionInput.normalizedString(shortcutName) else {
-      return invalidInput("Empty shortcut name")
+    guard let shortcutName = normalizedRequiredString(shortcutName) else {
+      return invalidInputResult("Empty shortcut name")
     }
 
     var components = URLComponents()
@@ -81,14 +81,19 @@ extension ActionExecutor {
     ]
 
     guard let url = components.url else {
-      return internalError("Failed to build shortcut URL")
+      return internalErrorResult("Failed to build shortcut URL")
     }
 
     let ok = await dependencies.workspace.open(url)
     guard ok else {
-      return openFailed("Failed to run shortcut")
+      return openFailedResult("Failed to run shortcut")
     }
     return .success
+  }
+
+  private func normalizedRequiredString(_ value: String) -> String? {
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
   }
 
   private func applicationPathResult(for path: String) -> ApplicationPathResult? {
@@ -163,32 +168,8 @@ extension ActionExecutor {
       try await dependencies.workspace.openApplication(at: url, activates: true)
       return .success
     } catch {
-      return openFailed(failureMessage)
+      return openFailedResult(failureMessage)
     }
-  }
-
-  private func invalidInput(_ message: String) -> ActionResult {
-    let actionError = ActionError.invalidInput(message)
-    configuration.log(.warning, actionError.diagnosticMessage)
-    return .failure(actionError)
-  }
-
-  private func notFound(_ message: String) -> ActionResult {
-    let actionError = ActionError.notFound(message)
-    configuration.log(.error, actionError.diagnosticMessage)
-    return .failure(actionError)
-  }
-
-  private func openFailed(_ message: String) -> ActionResult {
-    let actionError = ActionError.openFailed(message)
-    configuration.log(.error, actionError.diagnosticMessage)
-    return .failure(actionError)
-  }
-
-  private func internalError(_ message: String) -> ActionResult {
-    let actionError = ActionError.internalError(message)
-    configuration.log(.error, actionError.diagnosticMessage)
-    return .failure(actionError)
   }
 }
 

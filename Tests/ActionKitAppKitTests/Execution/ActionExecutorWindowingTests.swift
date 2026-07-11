@@ -1,17 +1,120 @@
-import ApplicationServices
 import WindowKit
 import WindowKitAppKit
 import XCTest
 
-@testable import ActionKit
-@testable import ActionKitAppKit
+import ActionKit
+import ActionKitAppKit
 
 final class ActionExecutorWindowingTests: XCTestCase {
+  func testWindowAccessibilityErrorsMapByPublicErrorCases() {
+    XCTAssertEqual(
+      FocusedWindowControlError(
+        WindowAccessibilityError.applicationUnavailable(.focused)
+      ),
+      .targetWindowUnavailable
+    )
+    XCTAssertEqual(
+      FocusedWindowControlError(
+        WindowAccessibilityError.windowUnavailable(.focused)
+      ),
+      .targetWindowUnavailable
+    )
+    XCTAssertEqual(
+      FocusedWindowControlError(
+        WindowAccessibilityError.unsupportedAccessibilityOperation(.raise)
+      ),
+      .unsupportedAccessibilityOperation("raise")
+    )
+    XCTAssertEqual(
+      FocusedWindowControlError(
+        WindowAccessibilityError.accessibilityOperationFailed(
+          operation: .setFrame,
+          failure: .cannotComplete
+        )
+      ),
+      .accessibilityOperationFailed("setFrame: cannotComplete")
+    )
+  }
+
+  func testWindowPlacerErrorsMapToStableInternalClassification() {
+    XCTAssertEqual(
+      FocusedWindowControlError(
+        WindowPlacerError.screenNotFound(.orderedIndex(99))
+      ),
+      .screenNotFound("orderedIndex(99)")
+    )
+  }
+
+  func testActionWindowPlacementValuesMapToWindowKitPlacements() {
+    XCTAssertEqual(ActionWindowMapper.placement(.fill), WindowPlacement.fill)
+    XCTAssertEqual(
+      ActionWindowMapper.placement(
+        .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1)
+      ),
+      WindowPlacement.grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1))
+    XCTAssertEqual(
+      ActionWindowMapper.placement(
+        .grid(
+          columns: 2,
+          rows: 3,
+          column: 1,
+          row: 2,
+          columnSpan: 1,
+          rowSpan: 1
+        )
+      ),
+      WindowPlacement.grid(
+        columns: 2,
+        rows: 3,
+        column: 1,
+        row: 2,
+        columnSpan: 1,
+        rowSpan: 1
+      )
+    )
+    XCTAssertEqual(
+      ActionWindowMapper.placement(.centered(widthRatio: 0.7, heightRatio: 0.5)),
+      WindowPlacement.centered(widthRatio: 0.7, heightRatio: 0.5)
+    )
+  }
+
+  func testActionWindowScreenValuesMapToWindowKitValues() {
+    XCTAssertEqual(ActionWindowMapper.screenTarget(.main), WindowScreenTarget.main)
+    XCTAssertEqual(
+      ActionWindowMapper.screenTarget(.containingWindow),
+      WindowScreenTarget.containingWindow
+    )
+    XCTAssertEqual(
+      ActionWindowMapper.screenTarget(.point(.init(x: 10, y: 20))),
+      WindowScreenTarget.point(.init(x: 10, y: 20))
+    )
+    XCTAssertEqual(
+      ActionWindowMapper.screenTarget(.displayIdentifier(7)),
+      WindowScreenTarget.displayIdentifier(7)
+    )
+    XCTAssertEqual(
+      ActionWindowMapper.screenTarget(.orderedIndex(2)),
+      WindowScreenTarget.orderedIndex(2)
+    )
+    XCTAssertEqual(ActionWindowMapper.screenArea(.full), WindowScreenArea.full)
+    XCTAssertEqual(ActionWindowMapper.screenArea(.visible), WindowScreenArea.visible)
+    XCTAssertEqual(
+      ActionWindowMapper.screenCycleDirection(.next),
+      WindowScreenCycleDirection.next
+    )
+    XCTAssertEqual(
+      ActionWindowMapper.screenCycleDirection(.previous),
+      WindowScreenCycleDirection.previous
+    )
+  }
+
   func testWindowingExecutionReturnsPermissionDeniedWhenAccessibilityUnavailable() async {
+    let logs = LogRecorder()
     let factoryInvocations = InvocationRecorder()
     let executor = ActionExecutor(
       configuration: .init(
-        permissions: .init(ensureAccessibility: { false })
+        permissions: .init(ensureAccessibility: { false }),
+        log: { level, message in logs.record(level, message) }
       ),
       dependencies: makeActionExecutorDependencies(makeFocusedWindowController: {
         factoryInvocations.record()
@@ -26,6 +129,7 @@ final class ActionExecutorWindowingTests: XCTestCase {
 
     XCTAssertEqual(outcome.finalResult, .failure(.permissionDenied(.accessibility)))
     XCTAssertEqual(factoryInvocations.invocationCount, 0)
+    XCTAssertTrue(logs.contains(level: .warning, message: "Permission denied: accessibility"))
   }
 
   func testWindowPlacementSucceedsWhenControllerAcceptsRequest() async {
@@ -35,7 +139,7 @@ final class ActionExecutorWindowingTests: XCTestCase {
       dependencies: makeActionExecutorDependencies(makeFocusedWindowController: { recorder })
     )
     let request = WindowPlacementRequest(
-      placement: .leftTwoThirds,
+      placement: .grid(columns: 3, rows: 1, column: 0, row: 0, columnSpan: 2, rowSpan: 1),
       screen: .orderedIndex(2),
       area: .full,
       inset: 16
@@ -70,9 +174,15 @@ final class ActionExecutorWindowingTests: XCTestCase {
   func testWindowingExecutionReturnsPermissionDeniedWhenWindowKitReportsAccessibilityUnavailable()
     async
   {
-    let recorder = TestFocusedWindowController(placeError: AXWindowError.accessibilityNotTrusted)
+    let logs = LogRecorder()
+    let recorder = TestFocusedWindowController(
+      placeError: FocusedWindowControlError.accessibilityNotTrusted
+    )
     let executor = ActionExecutor(
-      configuration: .init(permissions: .init(ensureAccessibility: { true })),
+      configuration: .init(
+        permissions: .init(ensureAccessibility: { true }),
+        log: { level, message in logs.record(level, message) }
+      ),
       dependencies: makeActionExecutorDependencies(makeFocusedWindowController: { recorder })
     )
 
@@ -82,10 +192,13 @@ final class ActionExecutorWindowingTests: XCTestCase {
       ]))
 
     XCTAssertEqual(outcome.finalResult, .failure(.permissionDenied(.accessibility)))
+    XCTAssertTrue(logs.contains(level: .warning, message: "Permission denied: accessibility"))
   }
 
   func testWindowMoveSkipsWhenNoFocusedWindowExists() async {
-    let recorder = TestFocusedWindowController(moveError: AXWindowError.windowNotFound(.focused))
+    let recorder = TestFocusedWindowController(
+      moveError: FocusedWindowControlError.targetWindowUnavailable
+    )
     let executor = ActionExecutor(
       configuration: .init(permissions: .init(ensureAccessibility: { true })),
       dependencies: makeActionExecutorDependencies(makeFocusedWindowController: { recorder })
@@ -103,7 +216,7 @@ final class ActionExecutorWindowingTests: XCTestCase {
 
   func testWindowPlacementSkipsWhenFocusedApplicationCannotBeResolved() async {
     let recorder = TestFocusedWindowController(
-      placeError: AXWindowError.applicationNotFound(.focused)
+      placeError: FocusedWindowControlError.targetWindowUnavailable
     )
     let executor = ActionExecutor(
       configuration: .init(permissions: .init(ensureAccessibility: { true })),
@@ -120,7 +233,9 @@ final class ActionExecutorWindowingTests: XCTestCase {
 
   func testWindowPlacementMapsInvalidAXValueToInternalError() async {
     let logs = LogRecorder()
-    let recorder = TestFocusedWindowController(placeError: AXWindowError.invalidAXValue)
+    let recorder = TestFocusedWindowController(
+      placeError: FocusedWindowControlError.invalidAccessibilityValue("setFrame")
+    )
     let executor = ActionExecutor(
       configuration: .init(
         permissions: .init(ensureAccessibility: { true }),
@@ -140,17 +255,18 @@ final class ActionExecutorWindowingTests: XCTestCase {
     XCTAssertEqual(error.code, .internalError)
     XCTAssertTrue(error.diagnosticMessage.contains("Focused-window action failed"))
     XCTAssertTrue(error.diagnosticMessage.contains("invalid Accessibility window value"))
+    XCTAssertTrue(error.diagnosticMessage.contains("setFrame"))
     XCTAssertTrue(
       logs.contains(
         level: .error,
-        message: "Focused-window action failed: invalid Accessibility window value"
+        message: "Focused-window action failed: invalid Accessibility window value during setFrame"
       )
     )
   }
 
   func testWindowPlacementIncludesUnsupportedActionInDiagnosticMessage() async {
     let recorder = TestFocusedWindowController(
-      placeError: AXWindowError.unsupportedAction("AXRaise")
+      placeError: FocusedWindowControlError.unsupportedAccessibilityOperation("raise")
     )
     let executor = ActionExecutor(
       configuration: .init(permissions: .init(ensureAccessibility: { true })),
@@ -166,13 +282,13 @@ final class ActionExecutorWindowingTests: XCTestCase {
       return XCTFail("Expected failure")
     }
     XCTAssertEqual(error.code, .internalError)
-    XCTAssertTrue(error.diagnosticMessage.contains("unsupported Accessibility window action"))
-    XCTAssertTrue(error.diagnosticMessage.contains("AXRaise"))
+    XCTAssertTrue(error.diagnosticMessage.contains("unsupported Accessibility window operation"))
+    XCTAssertTrue(error.diagnosticMessage.contains("raise"))
   }
 
   func testWindowPlacementIncludesUnderlyingAccessibilityErrorInDiagnosticMessage() async {
     let recorder = TestFocusedWindowController(
-      placeError: AXWindowError.underlyingAccessibilityError(.cannotComplete)
+      placeError: FocusedWindowControlError.accessibilityOperationFailed("cannotComplete")
     )
     let executor = ActionExecutor(
       configuration: .init(permissions: .init(ensureAccessibility: { true })),
@@ -189,12 +305,14 @@ final class ActionExecutorWindowingTests: XCTestCase {
     }
     XCTAssertEqual(error.code, .internalError)
     XCTAssertTrue(error.diagnosticMessage.contains("Accessibility window operation failed"))
-    XCTAssertTrue(error.diagnosticMessage.contains("AXError"))
+    XCTAssertTrue(error.diagnosticMessage.contains("cannotComplete"))
   }
 
   func testWindowPlacementMapsUnexpectedErrorsToInternalError() async {
     let logs = LogRecorder()
-    let recorder = TestFocusedWindowController(placeError: UnexpectedWindowingError())
+    let recorder = TestFocusedWindowController(
+      placeError: .unexpected("unexpected windowing error")
+    )
     let executor = ActionExecutor(
       configuration: .init(
         permissions: .init(ensureAccessibility: { true }),
@@ -226,7 +344,7 @@ final class ActionExecutorWindowingTests: XCTestCase {
   func testWindowPlacementMapsMissingScreenToNotFound() async {
     let logs = LogRecorder()
     let recorder = TestFocusedWindowController(
-      placeError: WindowPlacerError.screenNotFound(.orderedIndex(99))
+      placeError: .screenNotFound("orderedIndex(99)")
     )
     let executor = ActionExecutor(
       configuration: .init(
@@ -250,11 +368,5 @@ final class ActionExecutorWindowingTests: XCTestCase {
     XCTAssertTrue(
       logs.contains(level: .error, message: "Window screen not found: orderedIndex(99)")
     )
-  }
-}
-
-private struct UnexpectedWindowingError: Error, CustomStringConvertible {
-  var description: String {
-    "unexpected windowing error"
   }
 }

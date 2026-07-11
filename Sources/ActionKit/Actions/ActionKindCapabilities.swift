@@ -1,17 +1,3 @@
-/// Conservative retry-policy guidance for host-controlled execution.
-///
-/// Retry behavior describes how a host should think about repeating an action after a transient
-/// failure. It is not a runtime guarantee: the current app, focused element, window state, and
-/// system prompts can still change the result of any live macOS automation.
-public enum ActionRetryBehavior: String, Codable, Hashable, CaseIterable, Sendable {
-  /// Retrying is expected to converge on the same user-visible state in normal conditions.
-  case safe
-  /// Retrying depends on the current app, focus, selection, window, or system state.
-  case contextDependent = "context-dependent"
-  /// Retrying may repeat a non-idempotent or disruptive user-visible side effect.
-  case unsafe
-}
-
 /// Static execution-semantics metadata for an action kind.
 ///
 /// These values are conservative host-policy hints for action pickers, confirmation UI, retry
@@ -52,5 +38,56 @@ public struct ActionKindCapabilities: Codable, Equatable, Hashable, Sendable {
     self.requiresInteractiveSelection = requiresInteractiveSelection
     self.isDestructive = isDestructive
     self.retryBehavior = retryBehavior
+  }
+}
+
+extension ActionKindCapabilities {
+  private enum CodingKeys: String, CodingKey {
+    case requiresFrontmostApplication
+    case requiresFocusedWindow
+    case requiresInteractiveSelection
+    case isDestructive
+    case retryBehavior
+  }
+
+  /// Decodes execution-semantics metadata from its canonical catalog fields.
+  public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(
+      allowed: [
+        CodingKeys.requiresFrontmostApplication,
+        .requiresFocusedWindow,
+        .requiresInteractiveSelection,
+        .isDestructive,
+        .retryBehavior,
+      ],
+      debugName: "ActionKindCapabilities"
+    )
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.init(
+      requiresFrontmostApplication: try container.decode(
+        Bool.self,
+        forKey: .requiresFrontmostApplication
+      ),
+      requiresFocusedWindow: try container.decode(Bool.self, forKey: .requiresFocusedWindow),
+      requiresInteractiveSelection: try container.decode(
+        Bool.self,
+        forKey: .requiresInteractiveSelection
+      ),
+      isDestructive: try container.decode(Bool.self, forKey: .isDestructive),
+      retryBehavior: try container.decode(ActionRetryBehavior.self, forKey: .retryBehavior)
+    )
+  }
+
+  /// Encodes execution-semantics metadata as its canonical catalog fields.
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(
+      requiresFrontmostApplication,
+      forKey: .requiresFrontmostApplication
+    )
+    try container.encode(requiresFocusedWindow, forKey: .requiresFocusedWindow)
+    try container.encode(requiresInteractiveSelection, forKey: .requiresInteractiveSelection)
+    try container.encode(isDestructive, forKey: .isDestructive)
+    try container.encode(retryBehavior, forKey: .retryBehavior)
   }
 }

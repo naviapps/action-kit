@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionPreflightKeyboardTests: XCTestCase {
   func testKeyboardShortcutUsesKeyboardPlan() {
@@ -24,10 +24,5 @@ final class ActionPreflightKeyboardTests: XCTestCase {
     }
 
     XCTAssertEqual(value, "  cmd+shift+p  ")
-  }
-
-  func testKeyboardPlanDoesNotHandleOtherActions() {
-    XCTAssertNil(ActionPreflight.keyboardPlan(for: .copy))
-    XCTAssertNil(ActionPreflight.keyboardPlan(for: .openURL("https://example.com")))
   }
 }

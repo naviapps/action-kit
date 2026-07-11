@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionOutcomeTests: XCTestCase {
   func testOutcomeExposesDerivedConvenienceValues() {
@@ -60,19 +60,36 @@ final class ActionOutcomeTests: XCTestCase {
     XCTAssertTrue(outcome.didAttemptFallback)
   }
 
-  func testOutcomeWithoutAttemptsUsesInternalError() throws {
+  func testOutcomeWithoutAttemptsRecordsInternalErrorAttempt() throws {
     let outcome = ActionOutcome(attempts: [])
 
+    XCTAssertEqual(outcome.attempts.count, 1)
+    XCTAssertEqual(outcome.attempts.first?.requiredPermissions, [])
+    XCTAssertFalse(outcome.attempts.first?.isFallback ?? true)
+    XCTAssertEqual(outcome.attempts.first?.result, outcome.finalResult)
     XCTAssertNil(outcome.successfulAttempt)
     XCTAssertFalse(outcome.didAttemptFallback)
     XCTAssertEqual(
       outcome.finalResult,
       .failure(.internalError("No execution attempts were recorded"))
     )
-    XCTAssertEqual(
-      try JSONDecoder().decode(ActionOutcome.self, from: JSONEncoder().encode(outcome)),
-      outcome
-    )
+  }
+
+  func testOutcomeRejectsEmptyAttemptPayloadsOnDecode() throws {
+    let data = """
+      {
+        "finalResult": {
+          "status": "failure",
+          "error": {
+            "code": "internal-error",
+            "diagnosticMessage": "No execution attempts were recorded"
+          }
+        },
+        "attempts": []
+      }
+      """.data(using: .utf8)!
+
+    assertActionOutcomeDecodeRejects(data, codingPath: ["attempts"])
   }
 
   func testOutcomeEncodesDerivedFinalResultAndRoundTrips() throws {
@@ -114,6 +131,24 @@ final class ActionOutcomeTests: XCTestCase {
       """.data(using: .utf8)!
 
     assertActionOutcomeDecodeRejects(data, codingPath: ["finalResult"])
+  }
+
+  func testOutcomeRejectsUnknownFields() throws {
+    let data = """
+      {
+        "finalResult": { "status": "success" },
+        "attempts": [
+          {
+            "requiredPermissions": [],
+            "isFallback": false,
+            "result": { "status": "success" }
+          }
+        ],
+        "metadata": {}
+      }
+      """.data(using: .utf8)!
+
+    assertActionOutcomeDecodeRejects(data, codingPath: ["metadata"])
   }
 
   private func successfulAttempt(

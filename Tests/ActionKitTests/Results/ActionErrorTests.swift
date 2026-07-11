@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionErrorTests: XCTestCase {
   func testErrorCodesRoundTripCodableRawValue() throws {
@@ -10,7 +10,7 @@ final class ActionErrorTests: XCTestCase {
     }
   }
 
-  func testErrorCodeRawValuesAreStable() {
+  func testErrorCodeRawValuesAreCanonical() {
     XCTAssertEqual(
       ActionErrorCode.allCases.map(\.rawValue),
       [
@@ -25,7 +25,7 @@ final class ActionErrorTests: XCTestCase {
     )
   }
 
-  func testAutomationPermissionDeniedUsesStableCodableShape() throws {
+  func testAutomationPermissionDeniedUsesCanonicalCodableShape() throws {
     let error = ActionError.automationPermissionDenied(appleScriptErrorNumber: -1743)
     let data = try JSONEncoder().encode(error)
     let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -42,7 +42,7 @@ final class ActionErrorTests: XCTestCase {
     XCTAssertEqual(try JSONDecoder().decode(ActionError.self, from: data), error)
   }
 
-  func testAppleScriptFailureUsesStableCodableShape() throws {
+  func testAppleScriptFailureUsesCanonicalCodableShape() throws {
     let error = ActionError.appleScriptFailed(
       "The variable bad is not defined. (AppleScript error number 42)",
       appleScriptErrorNumber: 42
@@ -153,6 +153,31 @@ final class ActionErrorTests: XCTestCase {
       """.data(using: .utf8)!
 
     assertActionErrorDecodeRejects(data, codingPath: ["appleScriptErrorNumber"])
+  }
+
+  func testActionErrorRejectsNullAppleScriptNumberWhenFieldIsPresent() throws {
+    let data = """
+      {
+        "code": "permission-denied",
+        "diagnosticMessage": "Permission denied",
+        "permission": "automation",
+        "appleScriptErrorNumber": null
+      }
+      """.data(using: .utf8)!
+
+    assertActionErrorDecodeRejects(data, codingPath: ["appleScriptErrorNumber"])
+  }
+
+  func testActionErrorRejectsUnknownFields() throws {
+    let data = """
+      {
+        "code": "open-failed",
+        "diagnosticMessage": "Failed",
+        "metadata": {}
+      }
+      """.data(using: .utf8)!
+
+    assertActionErrorDecodeRejects(data, codingPath: ["metadata"])
   }
 
   func testFactoryMethodsSetErrorCodes() {

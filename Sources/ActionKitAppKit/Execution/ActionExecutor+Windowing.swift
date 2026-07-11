@@ -3,61 +3,50 @@ import WindowKitAppKit
 
 extension ActionExecutor {
   func executeWindowing(_ execution: WindowingExecution) async -> ActionResult {
-    guard await configuration.permissions.ensureAccessibility() else {
-      return .failure(.permissionDenied(.accessibility))
-    }
-
     do {
       try await performWindowingExecution(execution)
       return .success
-    } catch let error as AXWindowError {
-      return windowingResult(for: error)
-    } catch let error as WindowPlacerError {
-      return windowingResult(for: error)
     } catch {
-      return focusedWindowFailure(reason: "unexpected error: \(error)")
+      return windowingResult(for: error)
     }
   }
 
-  private func performWindowingExecution(_ execution: WindowingExecution) async throws {
-    try await MainActor.run {
-      let controller = dependencies.makeFocusedWindowController()
-      switch execution {
-      case .placeFocusedWindow(let request):
-        try controller.place(request)
-      case .moveFocusedWindow(let request):
-        try controller.moveToAdjacentScreen(request)
-      }
+  private func performWindowingExecution(_ execution: WindowingExecution)
+    async throws(FocusedWindowControlError)
+  {
+    let controller = dependencies.makeFocusedWindowController()
+    switch execution {
+    case .placeFocusedWindow(let request):
+      try await controller.place(request)
+    case .moveFocusedWindow(let request):
+      try await controller.moveToAdjacentScreen(request)
     }
   }
 
-  private func windowingResult(for error: AXWindowError) -> ActionResult {
+  private func windowingResult(for error: FocusedWindowControlError) -> ActionResult {
     switch error {
     case .accessibilityNotTrusted:
-      return .failure(.permissionDenied(.accessibility))
-    case .applicationNotFound, .windowNotFound:
+      return permissionDeniedResult(.accessibility)
+    case .targetWindowUnavailable:
       return .skipped(.noFocusedWindow)
-    case .invalidAXValue:
-      return focusedWindowFailure(reason: "invalid Accessibility window value")
-    case .unsupportedAction(let action):
-      return focusedWindowFailure(reason: "unsupported Accessibility window action: \(action)")
-    case .underlyingAccessibilityError(let error):
+    case .invalidAccessibilityValue(let operation):
+      return focusedWindowFailure(
+        reason: "invalid Accessibility window value during \(operation)"
+      )
+    case .unsupportedAccessibilityOperation(let operation):
+      return focusedWindowFailure(
+        reason: "unsupported Accessibility window operation: \(operation)"
+      )
+    case .accessibilityOperationFailed(let error):
       return focusedWindowFailure(reason: "Accessibility window operation failed: \(error)")
-    }
-  }
-
-  private func windowingResult(for error: WindowPlacerError) -> ActionResult {
-    switch error {
     case .screenNotFound(let screen):
-      let actionError = ActionError.notFound("Window screen not found: \(screen)")
-      configuration.log(.error, actionError.diagnosticMessage)
-      return .failure(actionError)
+      return notFoundResult("Window screen not found: \(screen)")
+    case .unexpected(let description):
+      return focusedWindowFailure(reason: "unexpected error: \(description)")
     }
   }
 
   private func focusedWindowFailure(reason: String) -> ActionResult {
-    let actionError = ActionError.internalError("Focused-window action failed: \(reason)")
-    configuration.log(.error, actionError.diagnosticMessage)
-    return .failure(actionError)
+    internalErrorResult("Focused-window action failed: \(reason)")
   }
 }

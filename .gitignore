@@ -1,11 +1,15 @@
-.DS_Store
-
-# Swift
 .build/
 .swiftpm/
+.DS_Store
+.envrc
+.env
+.env.*
+!.env.example
 Package.resolved
-**/.docc-build/
-
-# Editor
-.idea/
-.vscode/
+*.doccarchive
+DerivedData/
+xcuserdata/
+*.xcodeproj
+*.xcworkspace
+*.xcresult
+*.log

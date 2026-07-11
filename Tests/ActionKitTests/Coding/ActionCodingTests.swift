@@ -1,8 +1,7 @@
 import Foundation
-import WindowKit
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionCodingTests: XCTestCase {
   func testEncodesWithKindKey() throws {
@@ -20,7 +19,8 @@ final class ActionCodingTests: XCTestCase {
   }
 
   func testEncodesInputForWindowPlacementActions() throws {
-    let request = WindowPlacementRequest(placement: .leftHalf)
+    let request = WindowPlacementRequest(
+      placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1))
     let data = try JSONEncoder().encode(Action.windowPlacement(request))
     let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
     let input = object?["input"] as? [String: Any]
@@ -28,7 +28,13 @@ final class ActionCodingTests: XCTestCase {
     let screen = input?["screen"] as? [String: Any]
 
     XCTAssertEqual(object?["kind"] as? String, "action.window.placement")
-    XCTAssertEqual(placement?["kind"] as? String, "left-half")
+    XCTAssertEqual(placement?["kind"] as? String, "grid")
+    XCTAssertEqual(placement?["columns"] as? Int, 2)
+    XCTAssertEqual(placement?["rows"] as? Int, 1)
+    XCTAssertEqual(placement?["column"] as? Int, 0)
+    XCTAssertEqual(placement?["row"] as? Int, 0)
+    XCTAssertEqual(placement?["columnSpan"] as? Int, 1)
+    XCTAssertEqual(placement?["rowSpan"] as? Int, 1)
     XCTAssertEqual(screen?["kind"] as? String, "containing-window")
     XCTAssertEqual(input?["area"] as? String, "visible")
     XCTAssertEqual(input?["inset"] as? Double, 0)
@@ -78,6 +84,12 @@ final class ActionCodingTests: XCTestCase {
 
   func testDecodeRejectsInputForInputFreeAction() {
     let data = Data(#"{"kind":"action.editing.copy","input":"unexpected"}"#.utf8)
+
+    XCTAssertThrowsError(try JSONDecoder().decode(Action.self, from: data))
+  }
+
+  func testDecodeRejectsUnknownActionFields() {
+    let data = Data(#"{"kind":"action.editing.copy","metadata":{}}"#.utf8)
 
     XCTAssertThrowsError(try JSONDecoder().decode(Action.self, from: data))
   }

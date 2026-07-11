@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionResultTests: XCTestCase {
   func testSkipReasonsRoundTripCodableRawValue() throws {
@@ -10,7 +10,7 @@ final class ActionResultTests: XCTestCase {
     }
   }
 
-  func testSkipReasonRawValuesAreStable() {
+  func testSkipReasonRawValuesAreCanonical() {
     XCTAssertEqual(
       ActionSkipReason.allCases.map(\.rawValue),
       [
@@ -33,7 +33,7 @@ final class ActionResultTests: XCTestCase {
     }
   }
 
-  func testActionResultUsesStableCodableShape() throws {
+  func testActionResultUsesCanonicalCodableShape() throws {
     let success = try encodedJSONObject(ActionResult.success)
 
     XCTAssertEqual(Set(success.keys), ["status"])
@@ -53,7 +53,7 @@ final class ActionResultTests: XCTestCase {
     XCTAssertEqual(error?["code"] as? String, "open-failed")
   }
 
-  func testActionResultDecodesStableCodableShape() throws {
+  func testActionResultDecodesCanonicalCodableShape() throws {
     let success = Data(
       """
       {"status":"success"}
@@ -117,6 +117,16 @@ final class ActionResultTests: XCTestCase {
     assertActionResultDecodeRejects(successWithSkipReason, codingPath: ["skipReason"])
     assertActionResultDecodeRejects(skippedWithError, codingPath: ["error"])
     assertActionResultDecodeRejects(failureWithSkipReason, codingPath: ["skipReason"])
+  }
+
+  func testActionResultRejectsUnknownFields() {
+    let data = Data(
+      """
+      {"status":"success","metadata":{}}
+      """.utf8
+    )
+
+    assertActionResultDecodeRejects(data, codingPath: ["metadata"])
   }
 
   func testActionResultRequiresAssociatedCodablePayloads() {

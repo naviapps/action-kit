@@ -4,11 +4,11 @@
 
 ## Validation
 
--
+- [ ] `make check`
+- [ ] Documentation or `CHANGELOG.md` updated if public behavior changed
 
-## Review Checklist
+## Checklist
 
-- [ ] Public API changes are intentional and documented.
-- [ ] Tests cover behavior changes, or the validation notes explain why tests were not changed.
-- [ ] README, DocC, and CHANGELOG are updated when user-facing behavior changes.
-- [ ] No generated build output, local state, secrets, or private logs are included.
+- [ ] Public API changes are intentional.
+- [ ] Host-app responsibilities stay outside this package.
+- [ ] No generated output, dependency caches, local state, secrets, private logs, local paths, or app-internal references are included.

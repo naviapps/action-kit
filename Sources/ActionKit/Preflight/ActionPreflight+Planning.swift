@@ -1,10 +1,9 @@
 extension ActionPreflight {
   static func singleStepPlan(
-    method: ActionMethod,
-    requiredPermissions: [ActionPermission] = []
+    method: ActionMethod
   ) -> ActionPlan {
     .init(steps: [
-      .init(method: method, requiredPermissions: Set(requiredPermissions))
+      .init(method: method)
     ])
   }
 }

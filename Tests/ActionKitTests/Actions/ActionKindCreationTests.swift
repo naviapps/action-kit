@@ -1,40 +1,53 @@
-import WindowKit
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionKindCreationTests: XCTestCase {
-  func testActionsCoverActionKindsWithoutInput() {
+  func testMakeActionCoversActionKindsWithoutInput() {
     for kind in ActionKind.allCases {
-      if kind.inputShape == .none {
-        XCTAssertEqual(kind.action()?.kind, kind)
+      if kind.inputDescriptor.shape == .none {
+        XCTAssertEqual(kind.makeAction()?.kind, kind)
       } else {
-        XCTAssertNil(kind.action())
+        XCTAssertNil(kind.makeAction())
       }
     }
   }
 
-  func testActionKindCreatesActionsForAllInputRequiringKinds() {
+  func testMakeActionCreatesActionsForAllInputRequiringKinds() {
     let fixtures = ActionTestFixtures.inputActionCases
-    let inputRequiringKinds = ActionKind.allCases.filter { $0.inputShape != .none }
+    let inputRequiringKinds = ActionKind.allCases.filter { $0.inputDescriptor.shape != .none }
 
     XCTAssertEqual(fixtures.count, inputRequiringKinds.count)
     XCTAssertEqual(Set(fixtures.map(\.kind)), Set(inputRequiringKinds))
     for (kind, input, action) in fixtures {
-      XCTAssertEqual(kind.action(input: input), action)
+      XCTAssertEqual(kind.makeAction(input: input), action)
+    }
+  }
+
+  func testInputDescriptorExamplesCreateMatchingActions() {
+    for kind in ActionKind.allCases {
+      let action: Action?
+      if let exampleInput = kind.inputDescriptor.exampleInput {
+        action = kind.makeAction(input: exampleInput)
+      } else {
+        action = kind.makeAction()
+      }
+
+      XCTAssertEqual(action?.kind, kind, "\(kind) descriptor example should create its action")
     }
   }
 
   func testInputFreeActionKindsRejectHostInput() {
     let inputs: [ActionInput] = [
       .string("value"),
-      .windowPlacement(.init(placement: .leftHalf)),
+      .windowPlacement(
+        .init(placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1))),
       .windowMove(.init(direction: .next)),
     ]
 
-    for kind in ActionKind.allCases where kind.inputShape == .none {
+    for kind in ActionKind.allCases where kind.inputDescriptor.shape == .none {
       for input in inputs {
-        XCTAssertNil(kind.action(input: input), "\(kind) should reject \(input)")
+        XCTAssertNil(kind.makeAction(input: input), "\(kind) should reject \(input)")
       }
     }
   }
@@ -42,20 +55,21 @@ final class ActionKindCreationTests: XCTestCase {
   func testInputRequiringActionKindsRejectMismatchedInputShapes() {
     let sampleInputs: [ActionInputShape: ActionInput] = [
       .string: .string("value"),
-      .windowPlacement: .windowPlacement(.init(placement: .leftHalf)),
+      .windowPlacement: .windowPlacement(
+        .init(placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1))),
       .windowMove: .windowMove(.init(direction: .next)),
     ]
 
-    for kind in ActionKind.allCases where kind.inputShape != .none {
-      for (shape, input) in sampleInputs where shape != kind.inputShape {
-        XCTAssertNil(kind.action(input: input), "\(kind) should reject \(shape) input")
+    for kind in ActionKind.allCases where kind.inputDescriptor.shape != .none {
+      for (shape, input) in sampleInputs where shape != kind.inputDescriptor.shape {
+        XCTAssertNil(kind.makeAction(input: input), "\(kind) should reject \(shape) input")
       }
     }
   }
 
   func testStringInputActionKindsRejectBlankInput() {
-    for kind in ActionKind.allCases where kind.inputShape == .string {
-      XCTAssertNil(kind.action(input: .string(" ")), "\(kind) should reject blank string input")
+    for kind in ActionKind.allCases where kind.inputDescriptor.shape == .string {
+      XCTAssertNil(kind.makeAction(input: .string(" ")), "\(kind) should reject blank string input")
     }
   }
 
@@ -63,7 +77,7 @@ final class ActionKindCreationTests: XCTestCase {
     for (kind, input, action) in ActionTestFixtures.inputActionCases {
       guard case .string(let value) = input else { continue }
 
-      let createdAction = kind.action(input: .string("  \(value)\n"))
+      let createdAction = kind.makeAction(input: .string("  \(value)\n"))
 
       XCTAssertEqual(createdAction, action)
       XCTAssertEqual(createdAction?.input, input)

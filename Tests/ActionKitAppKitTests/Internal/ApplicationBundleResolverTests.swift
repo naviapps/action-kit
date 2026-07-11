@@ -1,22 +1,22 @@
 import XCTest
 
-@testable import ActionKitAppKit
+import ActionKitAppKit
 
-final class LiveWorkspaceTests: XCTestCase {
-  func testURLForApplicationNamedFindsApplicationBundleInSearchDirectory() async throws {
+final class ApplicationBundleResolverTests: XCTestCase {
+  func testURLForApplicationNamedFindsApplicationBundleInSearchDirectory() throws {
     let searchDirectory = try makeTemporaryDirectory()
     defer {
       try? FileManager.default.removeItem(at: searchDirectory)
     }
     let appURL = try createApplicationBundle(named: "Example.app", in: searchDirectory)
-    let workspace = LiveWorkspace(applicationSearchDirectories: [searchDirectory.path])
+    let resolver = ApplicationBundleResolver(searchDirectories: [searchDirectory.path])
 
-    let resolvedURL = await workspace.urlForApplication(named: "Example")
+    let resolvedURL = resolver.urlForApplication(named: "Example")
 
     XCTAssertEqual(standardizedPath(resolvedURL), standardizedPath(appURL))
   }
 
-  func testURLForApplicationNamedUsesFirstMatchingSearchDirectory() async throws {
+  func testURLForApplicationNamedUsesFirstMatchingSearchDirectory() throws {
     let firstSearchDirectory = try makeTemporaryDirectory()
     let secondSearchDirectory = try makeTemporaryDirectory()
     defer {
@@ -25,18 +25,18 @@ final class LiveWorkspaceTests: XCTestCase {
     }
     let firstAppURL = try createApplicationBundle(named: "Example.app", in: firstSearchDirectory)
     _ = try createApplicationBundle(named: "Example.app", in: secondSearchDirectory)
-    let workspace = LiveWorkspace(
-      applicationSearchDirectories: [
+    let resolver = ApplicationBundleResolver(
+      searchDirectories: [
         firstSearchDirectory.path,
         secondSearchDirectory.path,
       ])
 
-    let resolvedURL = await workspace.urlForApplication(named: "Example")
+    let resolvedURL = resolver.urlForApplication(named: "Example")
 
     XCTAssertEqual(standardizedPath(resolvedURL), standardizedPath(firstAppURL))
   }
 
-  func testURLForApplicationNamedExpandsTildeSearchDirectory() async throws {
+  func testURLForApplicationNamedExpandsTildeSearchDirectory() throws {
     let directoryName = ".action-kit-\(UUID().uuidString)"
     let searchDirectory = FileManager.default.homeDirectoryForCurrentUser
       .appendingPathComponent(directoryName)
@@ -44,53 +44,53 @@ final class LiveWorkspaceTests: XCTestCase {
       try? FileManager.default.removeItem(at: searchDirectory)
     }
     let appURL = try createApplicationBundle(named: "Example.app", in: searchDirectory)
-    let workspace = LiveWorkspace(applicationSearchDirectories: ["~/\(directoryName)"])
+    let resolver = ApplicationBundleResolver(searchDirectories: ["~/\(directoryName)"])
 
-    let resolvedURL = await workspace.urlForApplication(named: "Example")
+    let resolvedURL = resolver.urlForApplication(named: "Example")
 
     XCTAssertEqual(standardizedPath(resolvedURL), standardizedPath(appURL))
   }
 
-  func testURLForApplicationNamedReturnsNilWhenApplicationBundleIsMissing() async throws {
+  func testURLForApplicationNamedReturnsNilWhenApplicationBundleIsMissing() throws {
     let searchDirectory = try makeTemporaryDirectory()
     defer {
       try? FileManager.default.removeItem(at: searchDirectory)
     }
-    let workspace = LiveWorkspace(applicationSearchDirectories: [searchDirectory.path])
+    let resolver = ApplicationBundleResolver(searchDirectories: [searchDirectory.path])
 
-    let resolvedURL = await workspace.urlForApplication(named: "Missing")
+    let resolvedURL = resolver.urlForApplication(named: "Missing")
 
     XCTAssertNil(resolvedURL)
   }
 
-  func testURLForApplicationNamedRejectsNonDirectoryApplicationPath() async throws {
+  func testURLForApplicationNamedRejectsNonDirectoryApplicationPath() throws {
     let searchDirectory = try makeTemporaryDirectory()
     defer {
       try? FileManager.default.removeItem(at: searchDirectory)
     }
     let fileURL = searchDirectory.appendingPathComponent("Example.app")
     XCTAssertTrue(FileManager.default.createFile(atPath: fileURL.path, contents: Data()))
-    let workspace = LiveWorkspace(applicationSearchDirectories: [searchDirectory.path])
+    let resolver = ApplicationBundleResolver(searchDirectories: [searchDirectory.path])
 
-    let resolvedURL = await workspace.urlForApplication(named: "Example")
+    let resolvedURL = resolver.urlForApplication(named: "Example")
 
     XCTAssertNil(resolvedURL)
   }
 
-  func testURLForApplicationNamedAcceptsCaseInsensitiveAppSuffix() async throws {
+  func testURLForApplicationNamedAcceptsCaseInsensitiveAppSuffix() throws {
     let searchDirectory = try makeTemporaryDirectory()
     defer {
       try? FileManager.default.removeItem(at: searchDirectory)
     }
     let appURL = try createApplicationBundle(named: "Example.APP", in: searchDirectory)
-    let workspace = LiveWorkspace(applicationSearchDirectories: [searchDirectory.path])
+    let resolver = ApplicationBundleResolver(searchDirectories: [searchDirectory.path])
 
-    let resolvedURL = await workspace.urlForApplication(named: "Example.APP")
+    let resolvedURL = resolver.urlForApplication(named: "Example.APP")
 
     XCTAssertEqual(standardizedPath(resolvedURL), standardizedPath(appURL))
   }
 
-  func testURLForApplicationNamedRejectsPathLikeNames() async throws {
+  func testURLForApplicationNamedRejectsPathLikeNames() throws {
     let parentDirectory = try makeTemporaryDirectory()
     let searchDirectory = parentDirectory.appendingPathComponent("Search")
     let escapedAppURL = parentDirectory.appendingPathComponent("Escaped.app")
@@ -99,36 +99,36 @@ final class LiveWorkspaceTests: XCTestCase {
     }
     try FileManager.default.createDirectory(at: searchDirectory, withIntermediateDirectories: true)
     try createDirectory(at: escapedAppURL)
-    let workspace = LiveWorkspace(applicationSearchDirectories: [searchDirectory.path])
+    let resolver = ApplicationBundleResolver(searchDirectories: [searchDirectory.path])
 
-    let resolvedURL = await workspace.urlForApplication(named: "../Escaped")
+    let resolvedURL = resolver.urlForApplication(named: "../Escaped")
 
     XCTAssertNil(resolvedURL)
   }
 
-  func testURLForApplicationNamedRejectsTildePrefixedNames() async throws {
+  func testURLForApplicationNamedRejectsTildePrefixedNames() throws {
     let searchDirectory = try makeTemporaryDirectory()
     defer {
       try? FileManager.default.removeItem(at: searchDirectory)
     }
     _ = try createApplicationBundle(named: "~Example.app", in: searchDirectory)
-    let workspace = LiveWorkspace(applicationSearchDirectories: [searchDirectory.path])
+    let resolver = ApplicationBundleResolver(searchDirectories: [searchDirectory.path])
 
-    let resolvedURL = await workspace.urlForApplication(named: "~Example")
+    let resolvedURL = resolver.urlForApplication(named: "~Example")
 
     XCTAssertNil(resolvedURL)
   }
 
-  func testURLForApplicationNamedRejectsEmptyAndUnnormalizedNames() async throws {
+  func testURLForApplicationNamedRejectsEmptyAndUnnormalizedNames() throws {
     let searchDirectory = try makeTemporaryDirectory()
     defer {
       try? FileManager.default.removeItem(at: searchDirectory)
     }
     _ = try createApplicationBundle(named: "Example.app", in: searchDirectory)
-    let workspace = LiveWorkspace(applicationSearchDirectories: [searchDirectory.path])
+    let resolver = ApplicationBundleResolver(searchDirectories: [searchDirectory.path])
 
     for name in ["", " Example "] {
-      let resolvedURL = await workspace.urlForApplication(named: name)
+      let resolvedURL = resolver.urlForApplication(named: name)
 
       XCTAssertNil(resolvedURL)
     }

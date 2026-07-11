@@ -1,8 +1,8 @@
 import ApplicationServices
 import XCTest
 
-@testable import ActionKit
-@testable import ActionKitAppKit
+import ActionKit
+import ActionKitAppKit
 
 final class ActionExecutorAppleScriptTests: XCTestCase {
   func testAutomationDeniedTriggersCallback() async {
@@ -24,7 +24,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
     )
 
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false))
     ])
     let outcome = await executor.execute(plan: plan)
 
@@ -57,7 +59,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
     )
 
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false)),
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false)),
       .init(method: .keyEventFromKeyboardShortcut("cmd+a")),
     ])
 
@@ -89,7 +93,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
     )
 
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: true))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: true, usesAccessibility: false))
     ])
     let outcome = await executor.execute(plan: plan)
 
@@ -118,7 +124,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
     )
 
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: true))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: true, usesAccessibility: true))
     ])
     let outcome = await executor.execute(plan: plan)
 
@@ -129,6 +137,7 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
   }
 
   func testAutomationCheckerFailureDoesNotLaunchSystemEvents() async {
+    let logs = LogRecorder()
     let launcher = TestSystemEventsLauncher()
     let appleScriptExecutor = RecordingAppleScriptExecutor()
     let dependencies = makeActionExecutorDependencies(
@@ -137,13 +146,16 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
     )
     let executor = ActionExecutor(
       configuration: ActionExecutorConfiguration(
-        permissions: .init(ensureAutomation: { false })
+        permissions: .init(ensureAutomation: { false }),
+        log: { level, message in logs.record(level, message) }
       ),
       dependencies: dependencies
     )
 
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: true))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: true, usesAccessibility: false))
     ])
     let outcome = await executor.execute(plan: plan)
 
@@ -151,6 +163,7 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
     let count = await launcher.invocationCount
     XCTAssertEqual(count, 0)
     XCTAssertEqual(appleScriptExecutor.invocationCount, 0)
+    XCTAssertTrue(logs.contains(level: .warning, message: "Permission denied: automation"))
   }
 
   func testSystemEventsLaunchFailureReturnsInternalErrorBeforeAppleScriptExecution() async {
@@ -173,7 +186,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
     )
 
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: true))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: true, usesAccessibility: false))
     ])
     let outcome = await executor.execute(plan: plan)
 
@@ -200,7 +215,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
       dependencies: dependencies
     )
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false))
     ])
 
     let outcome = await executor.execute(plan: plan)
@@ -227,7 +244,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
       dependencies: dependencies
     )
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false))
     ])
 
     let outcome = await executor.execute(plan: plan)
@@ -257,7 +276,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
       dependencies: dependencies
     )
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false))
     ])
 
     let outcome = await executor.execute(plan: plan)
@@ -290,7 +311,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
       dependencies: dependencies
     )
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false))
     ])
 
     let outcome = await executor.execute(plan: plan)
@@ -329,7 +352,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
       dependencies: dependencies
     )
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false))
     ])
 
     let outcome = await executor.execute(plan: plan)
@@ -354,7 +379,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
       dependencies: dependencies
     )
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false))
     ])
 
     let outcome = await executor.execute(plan: plan)
@@ -386,7 +413,9 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
       dependencies: dependencies
     )
     let plan = ActionPlan(steps: [
-      .init(method: .appleScript(source: "tell app", requiresSystemEvents: false))
+      .init(
+        method: .appleScript(
+          source: "tell app", launchesSystemEvents: false, usesAccessibility: false))
     ])
 
     let outcome = await executor.execute(plan: plan)
@@ -408,9 +437,15 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
   }
 
   func testAppleScriptReturnsAutomationPermissionDeniedWhenCheckerFails() async {
+    let recorder = AutomationDeniedRecorder()
     let executor = ActionExecutor(
       configuration: ActionExecutorConfiguration(
-        permissions: .init(ensureAutomation: { false })
+        permissions: .init(
+          ensureAutomation: { false },
+          onAutomationDenied: { appleScriptErrorNumber in
+            await recorder.record(appleScriptErrorNumber: appleScriptErrorNumber)
+          }
+        )
       )
     )
 
@@ -418,6 +453,8 @@ final class ActionExecutorAppleScriptTests: XCTestCase {
     XCTAssertEqual(outcome.finalResult, .failure(.permissionDenied(.automation)))
     XCTAssertEqual(outcome.attempts.count, 1)
     XCTAssertEqual(outcome.attempts.first?.result, .failure(.permissionDenied(.automation)))
+    let wasCalled = await recorder.called
+    XCTAssertTrue(wasCalled)
   }
 }
 

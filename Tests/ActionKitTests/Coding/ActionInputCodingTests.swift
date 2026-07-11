@@ -1,7 +1,6 @@
-import WindowKit
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionInputCodingTests: XCTestCase {
   func testActionInputRoundTripsCodable() throws {
@@ -18,7 +17,7 @@ final class ActionInputCodingTests: XCTestCase {
     }
   }
 
-  func testActionInputUsesStableCodableShape() throws {
+  func testActionInputUsesCanonicalCodableShape() throws {
     let input = ActionInput.string("  https://example.com  ")
     let data = try JSONEncoder().encode(input)
     let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -36,8 +35,9 @@ final class ActionInputCodingTests: XCTestCase {
     )
   }
 
-  func testWindowPlacementInputUsesStableCodableShape() throws {
-    let input = ActionInput.windowPlacement(.init(placement: .leftHalf))
+  func testWindowPlacementInputUsesCanonicalCodableShape() throws {
+    let input = ActionInput.windowPlacement(
+      .init(placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1)))
     let data = try JSONEncoder().encode(input)
     let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any]
     let value = payload?["value"] as? [String: Any]
@@ -45,19 +45,33 @@ final class ActionInputCodingTests: XCTestCase {
     let screen = value?["screen"] as? [String: Any]
 
     XCTAssertEqual(payload?["shape"] as? String, "window-placement")
-    XCTAssertEqual(placement?["kind"] as? String, "left-half")
+    XCTAssertEqual(placement?["kind"] as? String, "grid")
+    XCTAssertEqual(placement?["columns"] as? Int, 2)
+    XCTAssertEqual(placement?["rows"] as? Int, 1)
+    XCTAssertEqual(placement?["column"] as? Int, 0)
+    XCTAssertEqual(placement?["row"] as? Int, 0)
+    XCTAssertEqual(placement?["columnSpan"] as? Int, 1)
+    XCTAssertEqual(placement?["rowSpan"] as? Int, 1)
     XCTAssertEqual(screen?["kind"] as? String, "containing-window")
     XCTAssertEqual(value?["area"] as? String, "visible")
     XCTAssertEqual(value?["inset"] as? Double, 0)
   }
 
-  func testWindowPlacementInputDecodesStableCodableShape() throws {
+  func testWindowPlacementInputDecodesCanonicalCodableShape() throws {
     let data = Data(
       #"""
       {
         "shape": "window-placement",
         "value": {
-          "placement": { "kind": "left-half" },
+          "placement": {
+            "kind": "grid",
+            "columns": 2,
+            "rows": 1,
+            "column": 0,
+            "row": 0,
+            "columnSpan": 1,
+            "rowSpan": 1
+          },
           "screen": { "kind": "containing-window" },
           "area": "visible",
           "inset": 0
@@ -68,11 +82,12 @@ final class ActionInputCodingTests: XCTestCase {
 
     XCTAssertEqual(
       try JSONDecoder().decode(ActionInput.self, from: data),
-      .windowPlacement(.init(placement: .leftHalf))
+      .windowPlacement(
+        .init(placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1)))
     )
   }
 
-  func testWindowMoveInputUsesStableCodableShape() throws {
+  func testWindowMoveInputUsesCanonicalCodableShape() throws {
     let input = ActionInput.windowMove(.init(direction: .next, preservesRelativePosition: false))
     let data = try JSONEncoder().encode(input)
     let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -83,7 +98,7 @@ final class ActionInputCodingTests: XCTestCase {
     XCTAssertEqual(value?["preservesRelativePosition"] as? Bool, false)
   }
 
-  func testWindowMoveInputDecodesStableCodableShape() throws {
+  func testWindowMoveInputDecodesCanonicalCodableShape() throws {
     let data = Data(
       #"""
       {
@@ -128,6 +143,12 @@ final class ActionInputCodingTests: XCTestCase {
     }
   }
 
+  func testActionInputRejectsUnknownFields() {
+    let data = Data(#"{"shape":"string","value":"value","metadata":{}}"#.utf8)
+
+    XCTAssertThrowsError(try JSONDecoder().decode(ActionInput.self, from: data))
+  }
+
   func testActionInputRejectsBlankStringOnEncode() {
     XCTAssertThrowsError(try JSONEncoder().encode(ActionInput.string("  "))) { error in
       guard case EncodingError.invalidValue = error else {
@@ -140,7 +161,8 @@ final class ActionInputCodingTests: XCTestCase {
   private static var inputFixtures: [ActionInput] {
     [
       .string("https://example.com"),
-      .windowPlacement(.init(placement: .leftHalf)),
+      .windowPlacement(
+        .init(placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1))),
       .windowMove(.init(direction: .next)),
     ]
   }

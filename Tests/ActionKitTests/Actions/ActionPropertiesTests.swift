@@ -1,7 +1,6 @@
-import WindowKit
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionPropertiesTests: XCTestCase {
   func testActionKindMatchesEveryActionCase() {
@@ -15,7 +14,11 @@ final class ActionPropertiesTests: XCTestCase {
   }
 
   func testActionInputIsNilForInputFreeActions() {
-    for (action, kind) in ActionTestFixtures.actionKindCases where kind.inputShape == .none {
+    let inputFreeActions = ActionTestFixtures.actionKindCases.filter {
+      !$0.kind.inputDescriptor.requiresInput
+    }
+
+    for (action, _) in inputFreeActions {
       XCTAssertNil(action.input, "\(action) should not expose input")
     }
   }
@@ -23,7 +26,7 @@ final class ActionPropertiesTests: XCTestCase {
   func testActionInputNormalizesStringValues() {
     XCTAssertEqual(
       Set(Self.stringInputFixtures.map { $0.action.kind }),
-      Set(ActionKind.allCases.filter { $0.inputShape == .string })
+      Set(ActionKind.allCases.filter { $0.inputDescriptor.shape == .string })
     )
 
     for (action, expectedInput) in Self.stringInputFixtures {
@@ -34,7 +37,7 @@ final class ActionPropertiesTests: XCTestCase {
   func testActionInputRejectsBlankStringValues() {
     XCTAssertEqual(
       Set(Self.blankStringInputActions.map(\.kind)),
-      Set(ActionKind.allCases.filter { $0.inputShape == .string })
+      Set(ActionKind.allCases.filter { $0.inputDescriptor.shape == .string })
     )
 
     for action in Self.blankStringInputActions {
@@ -43,7 +46,8 @@ final class ActionPropertiesTests: XCTestCase {
   }
 
   func testActionInputPreservesWindowRequests() {
-    let placement = WindowPlacementRequest(placement: .leftHalf)
+    let placement = WindowPlacementRequest(
+      placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1))
     let move = WindowMoveRequest(direction: .next, preservesRelativePosition: false)
 
     XCTAssertEqual(Action.windowPlacement(placement).input, .windowPlacement(placement))

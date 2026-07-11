@@ -1,5 +1,5 @@
 extension ActionKind {
-  /// Decodes an action kind from its stable semantic identifier.
+  /// Decodes an action kind from its canonical serialization identifier.
   public init(from decoder: Decoder) throws {
     let container = try decoder.singleValueContainer()
     let identifier = try container.decode(String.self)
@@ -12,7 +12,7 @@ extension ActionKind {
     self = kind
   }
 
-  /// Encodes this action kind as its stable semantic identifier.
+  /// Encodes this action kind as its canonical serialization identifier.
   public func encode(to encoder: Encoder) throws {
     var container = encoder.singleValueContainer()
     try container.encode(identifier)

@@ -1,20 +1,9 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionKindCapabilitiesTests: XCTestCase {
-  func testActionRetryBehaviorCasesAreStable() {
-    XCTAssertEqual(
-      ActionRetryBehavior.allCases,
-      [
-        .safe,
-        .contextDependent,
-        .unsafe,
-      ]
-    )
-  }
-
-  func testActionRetryBehaviorRawValuesAreStable() {
+  func testActionRetryBehaviorRawValuesAreCanonical() {
     XCTAssertEqual(
       ActionRetryBehavior.allCases.map(\.rawValue),
       ["safe", "context-dependent", "unsafe"]
@@ -88,14 +77,6 @@ final class ActionKindCapabilitiesTests: XCTestCase {
           requiresInteractiveSelection: true,
           retryBehavior: .unsafe
         ),
-        .windowMaximize: focusedWindow(retryBehavior: .safe),
-        .windowLeftHalf: focusedWindow(retryBehavior: .safe),
-        .windowRightHalf: focusedWindow(retryBehavior: .safe),
-        .windowTopHalf: focusedWindow(retryBehavior: .safe),
-        .windowBottomHalf: focusedWindow(retryBehavior: .safe),
-        .windowCenter: focusedWindow(retryBehavior: .safe),
-        .windowMoveToNextScreen: focusedWindow(retryBehavior: .unsafe),
-        .windowMoveToPreviousScreen: focusedWindow(retryBehavior: .unsafe),
         .windowPlacement: focusedWindow(retryBehavior: .safe),
         .windowMove: focusedWindow(retryBehavior: .unsafe),
       ]
@@ -109,7 +90,7 @@ final class ActionKindCapabilitiesTests: XCTestCase {
     XCTAssertEqual(try JSONDecoder().decode(ActionKindCapabilities.self, from: data), capabilities)
   }
 
-  func testCapabilitiesUseStableCodableShape() throws {
+  func testCapabilitiesUseCanonicalCodableShape() throws {
     let capabilities = frontmostApplication(
       isDestructive: true,
       retryBehavior: .contextDependent
@@ -124,7 +105,7 @@ final class ActionKindCapabilitiesTests: XCTestCase {
     XCTAssertEqual(payload?["retryBehavior"] as? String, "context-dependent")
   }
 
-  func testCapabilitiesDecodeStableCodableShape() throws {
+  func testCapabilitiesDecodeCanonicalCodableShape() throws {
     let data = Data(
       """
       {
@@ -141,6 +122,29 @@ final class ActionKindCapabilitiesTests: XCTestCase {
       try JSONDecoder().decode(ActionKindCapabilities.self, from: data),
       frontmostApplication(isDestructive: true, retryBehavior: .contextDependent)
     )
+  }
+
+  func testCapabilitiesRejectUnknownFieldsWhenDecoding() throws {
+    let data = Data(
+      """
+      {
+        "requiresFrontmostApplication": false,
+        "requiresFocusedWindow": true,
+        "requiresInteractiveSelection": false,
+        "isDestructive": false,
+        "retryBehavior": "safe",
+        "metadata": {}
+      }
+      """.utf8
+    )
+
+    XCTAssertThrowsError(try JSONDecoder().decode(ActionKindCapabilities.self, from: data)) {
+      error in
+      guard case let DecodingError.dataCorrupted(context) = error else {
+        return XCTFail("Expected dataCorrupted, got \(error)")
+      }
+      XCTAssertEqual(context.codingPath.map(\.stringValue), ["metadata"])
+    }
   }
 
   private var safe: ActionKindCapabilities {

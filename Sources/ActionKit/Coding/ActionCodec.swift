@@ -11,6 +11,10 @@ extension ActionEnvelope: Codable {
   }
 
   init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(
+      allowed: [CodingKeys.version, .action],
+      debugName: "ActionEnvelope"
+    )
     let container = try decoder.container(keyedBy: CodingKeys.self)
     let version = try container.decode(Int.self, forKey: .version)
     guard version == ActionCodec.currentVersion else {
@@ -23,20 +27,6 @@ extension ActionEnvelope: Codable {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(ActionCodec.currentVersion, forKey: .version)
     try container.encode(action, forKey: .action)
-  }
-}
-
-/// Errors produced while encoding or decoding JSON action envelopes.
-public enum ActionCodecError: LocalizedError, Sendable, Equatable, Hashable {
-  /// The encoded envelope uses a schema version this package cannot decode.
-  case unsupportedVersion(Int)
-
-  /// A localized description of the codec error.
-  public var errorDescription: String? {
-    switch self {
-    case .unsupportedVersion(let version):
-      "Unsupported action envelope version: \(version)."
-    }
   }
 }
 

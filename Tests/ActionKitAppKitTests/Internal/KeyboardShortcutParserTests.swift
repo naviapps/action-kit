@@ -2,7 +2,7 @@ import ApplicationServices
 import Carbon
 import XCTest
 
-@testable import ActionKitAppKit
+import ActionKitAppKit
 
 final class KeyboardShortcutParserTests: XCTestCase {
   func testParsesCommandC() {
@@ -96,7 +96,7 @@ final class KeyboardShortcutParserTests: XCTestCase {
       ])
   }
 
-  func testParsesUppercaseNamedModifiersWithStableLocale() {
+  func testParsesUppercaseNamedModifiersLocaleIndependently() {
     assertParses(
       "COMMAND+OPTION+C", virtualKey: kVK_ANSI_C,
       modifiers: [
@@ -104,7 +104,7 @@ final class KeyboardShortcutParserTests: XCTestCase {
       ])
   }
 
-  func testParsesFunctionModifierAliases() {
+  func testParsesFunctionModifierSynonyms() {
     assertParses("fn f11", virtualKey: kVK_F11, modifiers: .maskSecondaryFn)
     assertParses("function+f11", virtualKey: kVK_F11, modifiers: .maskSecondaryFn)
   }
@@ -123,7 +123,7 @@ final class KeyboardShortcutParserTests: XCTestCase {
     )
   }
 
-  func testParsesSymbolKeyAliases() {
+  func testParsesSymbolKeySynonyms() {
     assertParses("cmd+⌫", virtualKey: kVK_Delete, modifiers: .maskCommand)
     assertParses("cmd+←", virtualKey: kVK_LeftArrow, modifiers: .maskCommand)
   }

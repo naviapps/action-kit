@@ -18,7 +18,7 @@ public struct ActionExecutorConfiguration: Sendable {
 
   /// Host-provided hooks for permission readiness and recovery UX.
   ///
-  /// ActionKit executes actions; the host app decides how permission prompts and
+  /// ActionKitAppKit executes actions; the host app decides how permission prompts and
   /// recovery guidance are presented.
   public struct Permissions: Sendable {
     /// Returns whether Accessibility-backed execution may run.

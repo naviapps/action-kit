@@ -1,24 +1,24 @@
 import ActionKit
 import Foundation
-@testable import ActionKitAppKit
+import ActionKitAppKit
 
 final class TestFocusedWindowController: FocusedWindowControlling, @unchecked Sendable {
   private let lock = NSLock()
   private var placement: WindowPlacementRequest?
   private var move: WindowMoveRequest?
-  private let placeError: (any Error & Sendable)?
-  private let moveError: (any Error & Sendable)?
+  private let placeError: FocusedWindowControlError?
+  private let moveError: FocusedWindowControlError?
 
   init(
-    placeError: (any Error & Sendable)? = nil,
-    moveError: (any Error & Sendable)? = nil
+    placeError: FocusedWindowControlError? = nil,
+    moveError: FocusedWindowControlError? = nil
   ) {
     self.placeError = placeError
     self.moveError = moveError
   }
 
   @MainActor
-  func place(_ request: WindowPlacementRequest) throws {
+  func place(_ request: WindowPlacementRequest) throws(FocusedWindowControlError) {
     if let placeError {
       throw placeError
     }
@@ -28,7 +28,7 @@ final class TestFocusedWindowController: FocusedWindowControlling, @unchecked Se
   }
 
   @MainActor
-  func moveToAdjacentScreen(_ request: WindowMoveRequest) throws {
+  func moveToAdjacentScreen(_ request: WindowMoveRequest) throws(FocusedWindowControlError) {
     if let moveError {
       throw moveError
     }

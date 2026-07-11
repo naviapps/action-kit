@@ -1,10 +1,10 @@
 import XCTest
 
-@testable import ActionKit
-@testable import ActionKitAppKit
+import ActionKit
+import ActionKitAppKit
 
 final class ActionExecutorScreenCaptureTests: XCTestCase {
-  func testScreenCaptureRequestsPermissionWhenAccessCheckFails() async {
+  func testScreenCaptureCallsRecoveryHookWhenAccessCheckFails() async {
     let logs = LogRecorder()
     let tracker = ScreenRecordingTracker()
     let processRunner = TestScreenCaptureProcessRunner()

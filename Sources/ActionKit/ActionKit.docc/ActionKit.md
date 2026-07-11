@@ -19,30 +19,32 @@ The core target includes:
 - ``ActionResult``, ``ActionError``, ``ActionAttempt``, and ``ActionOutcome`` for execution
   reporting
 - ``WindowPlacementRequest`` and ``WindowMoveRequest`` for focused-window actions backed by
-  WindowKit value types
+  ActionKit-owned Codable placement, screen, area, and direction values
 
-`ActionKit` does not request permissions, post events, run commands, execute AppleScript, open
-URLs, or control windows. Those live integrations are provided by `ActionKitAppKit`.
+## Responsibility Boundary
 
-Typical integrations include launcher apps with curated action catalogs, keyboard utilities that
-preflight focused-app or focused-window actions, and local assistants that serialize suggested
-actions before asking the host app to execute them.
+ActionKit owns action models, canonical identifiers, input descriptors,
+capability metadata, permission preflight hints, JSON envelopes, focused-window
+request values and their Codable payload values, and execution result models.
 
-A typical host flow is: build an ``ActionKind`` catalog, inspect input descriptors and capabilities,
-preflight permission hints, encode or decode an ``ActionCodec`` envelope, execute through
-`ActionKitAppKit`, then observe the returned ``ActionOutcome``.
+ActionKit does not request permissions, post events, run commands, execute
+AppleScript, open URLs, control windows, collect analytics, transmit data, or
+persist action history. Those live integrations are provided by
+`ActionKitAppKit` or the host app.
 
-Stable action identifiers are intended to remain compatible across minor releases. Use
+Action identifiers are the canonical serialization names for the current action catalog. Use
 ``ActionKind/identifier`` and ``ActionCodec`` payloads for persistence, IPC, and tool bindings
 instead of relying on enum case names as external protocol strings.
 
 Use ``ActionKind`` when building a picker or command catalog before input is available:
 
 ```swift
+import ActionKit
+
 let kind = ActionKind.openURL
 let identifier = kind.identifier
-let inputShape = kind.inputShape
 let inputDescriptor = kind.inputDescriptor
+let inputShape = inputDescriptor.shape
 let parameterName = inputDescriptor.parameter?.name
 let exampleInput = inputDescriptor.exampleInput
 let requiresInput = inputDescriptor.requiresInput
@@ -50,65 +52,32 @@ let capabilities = kind.capabilities
 let permissionHints = ActionPreflight.permissionHints(forKind: kind)
 ```
 
-Use capabilities as conservative host-policy hints:
+When hosts create custom input metadata, ``ActionInputParameter`` returns `nil`
+for blank labels or invalid example input, and ``ActionInputDescriptor``
+returns `nil` when the parameter is missing, unnecessary, or does not match the
+descriptor shape.
+
+Use capabilities as conservative host-policy hints for focused-window
+availability, interactive selection, destructive actions, and retry behavior.
+
+Create an ``Action`` once the host has the required input:
 
 ```swift
-if capabilities.requiresFocusedWindow {
-  // Enable only when a focused window is available.
-}
+import ActionKit
 
-if capabilities.requiresInteractiveSelection {
-  // Keep the host UI available while the user chooses a target.
-}
-
-if capabilities.isDestructive {
-  // Ask for confirmation before exposing this action.
-}
-
-switch capabilities.retryBehavior {
-case .safe:
-  // The host may retry after transient failures.
-case .contextDependent, .unsafe:
-  // Prefer explicit user intent before retrying.
-}
-```
-
-Create an executable ``Action`` once the host has the required input:
-
-```swift
-if let action = ActionKind.openURL.action(input: .string("https://example.com")) {
+if let action = ActionKind.openURL.makeAction(input: .string("https://example.com")) {
   // Store or execute the action.
 }
 ```
 
-Use ``ActionCodec`` for versioned JSON envelopes:
+Decoded action envelopes, action payloads, standalone ``ActionInput`` payloads, input metadata,
+capability metadata, permission sets, and execution result payloads reject unknown top-level fields
+so stored data matches the documented contract.
 
-```swift
-let version = ActionCodec.currentVersion
-let data = try ActionCodec.encode(Action.openURL("https://example.com"))
-let decodedAction = try ActionCodec.decode(data)
-```
-
-The encoded envelope stores stable action identifiers:
-
-```json
-{
-  "version": 1,
-  "action": {
-    "kind": "action.workspace.open-url",
-    "input": "https://example.com"
-  }
-}
-```
-
-Live execution returns ``ActionOutcome`` instead of a bare success flag. Hosts can inspect ordered
-``ActionAttempt`` values, fallback usage, the derived ``ActionResult``, and ``ActionError``
-diagnostics without making ActionKit responsible for analytics, log storage, or user-facing
-recovery flows.
-
-Shortcuts remains useful for user-authored workflows. ActionKit is for embedded, typed,
-host-controlled automation surfaces where an app needs to describe actions, preflight permissions,
-serialize payloads, inspect execution semantics, and choose when live macOS APIs are called.
+Live execution reports ``ActionOutcome`` values with ordered ``ActionAttempt`` records,
+``ActionResult`` summaries, and ``ActionError`` diagnostics. Windowing actions use explicit
+``WindowPlacementRequest`` and ``WindowMoveRequest`` payloads instead of duplicate fixed-placement
+catalog cases.
 
 ## Topics
 
@@ -148,5 +117,9 @@ serialize payloads, inspect execution semantics, and choose when live macOS APIs
 
 ### Windowing
 
+- ``ActionWindowPlacement``
+- ``ActionWindowScreenTarget``
+- ``ActionWindowScreenArea``
+- ``ActionWindowScreenCycleDirection``
 - ``WindowPlacementRequest``
 - ``WindowMoveRequest``

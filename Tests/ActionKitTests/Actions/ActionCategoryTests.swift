@@ -1,23 +1,8 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionCategoryTests: XCTestCase {
-  func testActionCategoryCasesAreStable() {
-    XCTAssertEqual(
-      ActionCategory.allCases,
-      [
-        .editing,
-        .frontmostApplication,
-        .media,
-        .keyboard,
-        .workspace,
-        .system,
-        .window,
-      ]
-    )
-  }
-
   func testActionCategoriesRoundTripCodableRawValue() throws {
     for category in ActionCategory.allCases {
       let data = try JSONEncoder().encode(category)
@@ -25,7 +10,7 @@ final class ActionCategoryTests: XCTestCase {
     }
   }
 
-  func testActionCategoryRawValuesAreStable() {
+  func testActionCategoryRawValuesAreCanonical() {
     XCTAssertEqual(
       ActionCategory.allCases.map(\.rawValue),
       [

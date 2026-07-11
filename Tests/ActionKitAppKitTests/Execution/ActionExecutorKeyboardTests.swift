@@ -1,8 +1,8 @@
 import ApplicationServices
 import XCTest
 
-@testable import ActionKit
-@testable import ActionKitAppKit
+import ActionKit
+import ActionKitAppKit
 
 final class ActionExecutorKeyboardTests: XCTestCase {
   func testKeyboardShortcutPostsParsedKeyStroke() async {
@@ -52,11 +52,13 @@ final class ActionExecutorKeyboardTests: XCTestCase {
   }
 
   func testKeyStrokeReturnsAccessibilityPermissionDeniedWhenCheckerFails() async {
+    let logs = LogRecorder()
     let keyEventPoster = TestKeyEventPoster()
     let dependencies = makeActionExecutorDependencies(keyEventPoster: keyEventPoster)
     let executor = ActionExecutor(
       configuration: ActionExecutorConfiguration(
-        permissions: .init(ensureAccessibility: { false })
+        permissions: .init(ensureAccessibility: { false }),
+        log: { level, message in logs.record(level, message) }
       ),
       dependencies: dependencies
     )
@@ -66,6 +68,7 @@ final class ActionExecutorKeyboardTests: XCTestCase {
     XCTAssertEqual(outcome.attempts.count, 1)
     XCTAssertEqual(outcome.attempts.first?.result, .failure(.permissionDenied(.accessibility)))
     XCTAssertTrue(keyEventPoster.postedEvents.isEmpty)
+    XCTAssertTrue(logs.contains(level: .warning, message: "Permission denied: accessibility"))
   }
 
   func testKeyboardShortcutInvalidReturnsInvalidInput() async {

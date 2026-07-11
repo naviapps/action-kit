@@ -1,18 +1,23 @@
 /// Builds permission requirements and permission hints for actions.
 public enum ActionPreflight {
   package static func plan(for action: Action) -> ActionPlan {
-    editingPlan(for: action)
+    let plan =
+      editingPlan(for: action)
       ?? mediaPlan(for: action)
       ?? keyboardPlan(for: action)
       ?? frontmostApplicationPlan(for: action)
       ?? workspacePlan(for: action)
       ?? systemPlan(for: action)
       ?? windowingPlan(for: action)
-      ?? .init(steps: [])
+
+    return plan ?? .init(steps: [])
   }
 
-  package static func plan(forKind kind: ActionKind) -> ActionPlan {
-    permissionSampleAction(forKind: kind).map(plan(for:)) ?? .init(steps: [])
+  static func plan(forKind kind: ActionKind) -> ActionPlan {
+    guard let action = permissionSampleAction(forKind: kind) else {
+      return .init(steps: [])
+    }
+    return plan(for: action)
   }
 
   /// Returns the aggregate permission requirements for an action.
@@ -33,8 +38,9 @@ public enum ActionPreflight {
 
   private static func permissionSampleAction(forKind kind: ActionKind) -> Action? {
     if let exampleInput = kind.inputDescriptor.exampleInput {
-      return kind.action(input: exampleInput)
+      return kind.makeAction(input: exampleInput)
     }
-    return kind.action()
+
+    return kind.makeAction()
   }
 }

@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 struct KeyEventPlanExpectation {
   let action: Action

@@ -45,34 +45,35 @@ extension ActionPreflight {
     case .toggleAppearance:
       return singleStepPlan(
         method: .appleScript(
-          source: SystemAppleScript.toggleAppearance, requiresSystemEvents: true),
-        requiredPermissions: [.automation]
+          source: SystemAppleScript.toggleAppearance,
+          launchesSystemEvents: true,
+          usesAccessibility: false
+        )
       )
     case .missionControl:
       return .init(steps: [
         .init(
           method: .appleScript(
-            source: SystemAppleScript.missionControl, requiresSystemEvents: false),
-          requiredPermissions: [.automation]
+            source: SystemAppleScript.missionControl,
+            launchesSystemEvents: false,
+            usesAccessibility: false
+          )
         ),
         .init(
           method: .keyEvent(
             virtualKeyCode: VirtualKeyCode.missionControlFallback,
             modifiers: [.control]
           ),
-          requiredPermissions: [.accessibility],
           isFallback: true
         ),
       ])
     case .brightnessUp:
       return singleStepPlan(
-        method: .keyEvent(virtualKeyCode: VirtualKeyCode.brightnessUp, modifiers: [.function]),
-        requiredPermissions: [.accessibility]
+        method: .keyEvent(virtualKeyCode: VirtualKeyCode.brightnessUp, modifiers: [.function])
       )
     case .brightnessDown:
       return singleStepPlan(
-        method: .keyEvent(virtualKeyCode: VirtualKeyCode.brightnessDown, modifiers: [.function]),
-        requiredPermissions: [.accessibility]
+        method: .keyEvent(virtualKeyCode: VirtualKeyCode.brightnessDown, modifiers: [.function])
       )
     case .showDesktop, .lockScreen, .missionControlNextSpace, .missionControlPreviousSpace,
       .missionControlAppExpose,
@@ -80,8 +81,11 @@ extension ActionPreflight {
       return systemFallbackPlan(for: action)
     case .sleepMac:
       return singleStepPlan(
-        method: .appleScript(source: SystemAppleScript.sleep, requiresSystemEvents: true),
-        requiredPermissions: [.automation]
+        method: .appleScript(
+          source: SystemAppleScript.sleep,
+          launchesSystemEvents: true,
+          usesAccessibility: false
+        )
       )
     default:
       return nil
@@ -100,10 +104,7 @@ extension ActionPreflight {
     default:
       return nil
     }
-    return singleStepPlan(
-      method: .screenCapture(arguments: arguments),
-      requiredPermissions: [.screenRecording]
-    )
+    return singleStepPlan(method: .screenCapture(arguments: arguments))
   }
 
   private static func systemFallbackPlan(for action: Action) -> ActionPlan? {
@@ -146,12 +147,14 @@ extension ActionPreflight {
   ) -> ActionPlan {
     .init(steps: [
       .init(
-        method: .appleScript(source: source, requiresSystemEvents: true),
-        requiredPermissions: [.accessibility, .automation]
+        method: .appleScript(
+          source: source,
+          launchesSystemEvents: true,
+          usesAccessibility: true
+        )
       ),
       .init(
         method: fallback,
-        requiredPermissions: [.accessibility],
         isFallback: true
       ),
     ])

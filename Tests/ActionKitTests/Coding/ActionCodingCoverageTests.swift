@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionCodingCoverageTests: XCTestCase {
   func testEncodesAndDecodesEveryActionKind() throws {

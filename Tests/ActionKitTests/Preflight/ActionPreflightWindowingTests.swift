@@ -1,16 +1,43 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionPreflightWindowingTests: XCTestCase {
-  func testWindowPlacementShortcutsUseExpectedRequests() {
+  func testExplicitWindowPlacementRequestsArePreserved() {
     let cases: [(action: Action, request: WindowPlacementRequest)] = [
-      (.windowMaximize, .init(placement: .fill)),
-      (.windowLeftHalf, .init(placement: .leftHalf)),
-      (.windowRightHalf, .init(placement: .rightHalf)),
-      (.windowTopHalf, .init(placement: .topHalf)),
-      (.windowBottomHalf, .init(placement: .bottomHalf)),
-      (.windowCenter, .init(placement: .centered(widthRatio: 0.85, heightRatio: 0.85))),
+      (.windowPlacement(.init(placement: .fill)), .init(placement: .fill)),
+      (
+        .windowPlacement(
+          .init(
+            placement: .grid(
+              columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1))),
+        .init(placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1))
+      ),
+      (
+        .windowPlacement(
+          .init(
+            placement: .grid(
+              columns: 2, rows: 1, column: 1, row: 0, columnSpan: 1, rowSpan: 1))),
+        .init(placement: .grid(columns: 2, rows: 1, column: 1, row: 0, columnSpan: 1, rowSpan: 1))
+      ),
+      (
+        .windowPlacement(
+          .init(
+            placement: .grid(
+              columns: 1, rows: 2, column: 0, row: 1, columnSpan: 1, rowSpan: 1))),
+        .init(placement: .grid(columns: 1, rows: 2, column: 0, row: 1, columnSpan: 1, rowSpan: 1))
+      ),
+      (
+        .windowPlacement(
+          .init(
+            placement: .grid(
+              columns: 1, rows: 2, column: 0, row: 0, columnSpan: 1, rowSpan: 1))),
+        .init(placement: .grid(columns: 1, rows: 2, column: 0, row: 0, columnSpan: 1, rowSpan: 1))
+      ),
+      (
+        .windowPlacement(.init(placement: .centered(widthRatio: 0.85, heightRatio: 0.85))),
+        .init(placement: .centered(widthRatio: 0.85, heightRatio: 0.85))
+      ),
     ]
 
     for expectation in cases {
@@ -24,10 +51,10 @@ final class ActionPreflightWindowingTests: XCTestCase {
     }
   }
 
-  func testWindowMoveShortcutsUseExpectedRequests() {
+  func testExplicitWindowMoveRequestsArePreserved() {
     let cases: [(action: Action, request: WindowMoveRequest)] = [
-      (.windowMoveToNextScreen, .init(direction: .next)),
-      (.windowMoveToPreviousScreen, .init(direction: .previous)),
+      (.windowMove(.init(direction: .next)), .init(direction: .next)),
+      (.windowMove(.init(direction: .previous)), .init(direction: .previous)),
     ]
 
     for expectation in cases {
@@ -41,7 +68,7 @@ final class ActionPreflightWindowingTests: XCTestCase {
     }
   }
 
-  func testExplicitWindowingRequestsArePreserved() {
+  func testWindowingRequestsPreserveScreenAndAreaOptions() {
     let placement = WindowPlacementRequest(
       placement: .grid(columns: 2, rows: 2, column: 1, row: 0, columnSpan: 1, rowSpan: 2),
       screen: .orderedIndex(1),
@@ -55,11 +82,6 @@ final class ActionPreflightWindowingTests: XCTestCase {
       .placeFocusedWindow(placement)
     )
     XCTAssertEqual(assertWindowingExecution(for: .windowMove(move)), .moveFocusedWindow(move))
-  }
-
-  func testWindowingPlanDoesNotHandleOtherActions() {
-    XCTAssertNil(ActionPreflight.windowingPlan(for: .copy))
-    XCTAssertNil(ActionPreflight.windowingPlan(for: .openURL("https://example.com")))
   }
 
   private func assertWindowingExecution(

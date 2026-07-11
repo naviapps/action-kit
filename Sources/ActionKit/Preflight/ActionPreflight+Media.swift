@@ -4,7 +4,7 @@ extension ActionPreflight {
       return nil
     }
 
-    return singleStepPlan(method: method, requiredPermissions: [.accessibility])
+    return singleStepPlan(method: method)
   }
 
   private static func mediaKeyEvent(for action: Action) -> ActionMethod? {

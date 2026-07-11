@@ -1,15 +1,19 @@
 import ApplicationServices
 import XCTest
 
-@testable import ActionKitAppKit
+import ActionKitAppKit
 
-final class LiveKeyEventPosterTests: XCTestCase {
+final class KeyStrokeEventPosterTests: XCTestCase {
   func testPostKeyStrokePostsKeyDownThenKeyUp() {
     let recorder = KeyEventRecorder()
-    let poster = LiveKeyEventPoster(
+    let poster = KeyStrokeEventPoster(
       makeKeyEvent: { virtualKey, flags, keyDown in
         recorder.recordRequest(virtualKey: virtualKey, flags: flags, keyDown: keyDown)
-        return Self.keyEvent(virtualKey: virtualKey, keyDown: keyDown)
+        guard let event = Self.keyEvent(virtualKey: virtualKey, keyDown: keyDown) else {
+          XCTFail("Test CGEvent creation should succeed.")
+          return nil
+        }
+        return event
       },
       postKeyEvent: { event in
         let isNonRepeating = event.getIntegerValueField(.keyboardEventAutorepeat) == 0
@@ -31,7 +35,7 @@ final class LiveKeyEventPosterTests: XCTestCase {
 
   func testPostKeyStrokeDefaultFactoryAppliesVirtualKeyAndFlags() {
     let recorder = KeyEventRecorder()
-    let poster = LiveKeyEventPoster(
+    let poster = KeyStrokeEventPoster(
       postKeyEvent: { event in
         recorder.recordPostedEvent(
           virtualKey: CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode)),
@@ -54,10 +58,15 @@ final class LiveKeyEventPosterTests: XCTestCase {
 
   func testPostKeyStrokeDoesNotPostPartialEventWhenKeyUpCreationFails() {
     let recorder = KeyEventRecorder()
-    let poster = LiveKeyEventPoster(
+    let poster = KeyStrokeEventPoster(
       makeKeyEvent: { virtualKey, flags, keyDown in
         recorder.recordRequest(virtualKey: virtualKey, flags: flags, keyDown: keyDown)
-        return keyDown ? Self.keyEvent(virtualKey: virtualKey, keyDown: true) : nil
+        guard keyDown else { return nil }
+        guard let event = Self.keyEvent(virtualKey: virtualKey, keyDown: true) else {
+          XCTFail("Test CGEvent creation should succeed.")
+          return nil
+        }
+        return event
       },
       postKeyEvent: { _ in recorder.recordPostedEvent(isNonRepeating: true) }
     )
@@ -73,7 +82,7 @@ final class LiveKeyEventPosterTests: XCTestCase {
 
   func testPostKeyStrokeDoesNotCreateKeyUpWhenKeyDownCreationFails() {
     let recorder = KeyEventRecorder()
-    let poster = LiveKeyEventPoster(
+    let poster = KeyStrokeEventPoster(
       makeKeyEvent: { virtualKey, flags, keyDown in
         recorder.recordRequest(virtualKey: virtualKey, flags: flags, keyDown: keyDown)
         return nil
@@ -90,12 +99,8 @@ final class LiveKeyEventPosterTests: XCTestCase {
     XCTAssertEqual(recorder.postedEventCount, 0)
   }
 
-  private static func keyEvent(virtualKey: CGKeyCode, keyDown: Bool) -> CGEvent {
-    guard let event = CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: keyDown)
-    else {
-      fatalError("Test CGEvent creation should succeed.")
-    }
-    return event
+  private static func keyEvent(virtualKey: CGKeyCode, keyDown: Bool) -> CGEvent? {
+    CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: keyDown)
   }
 }
 

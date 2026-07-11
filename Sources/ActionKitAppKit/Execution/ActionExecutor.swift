@@ -20,7 +20,7 @@ public actor ActionExecutor {
     await execute(plan: ActionPreflight.plan(for: action))
   }
 
-  init(
+  package init(
     configuration: ActionExecutorConfiguration = .init(),
     dependencies: ActionExecutorDependencies
   ) {
@@ -28,7 +28,7 @@ public actor ActionExecutor {
     self.dependencies = dependencies
   }
 
-  func execute(plan: ActionPlan) async -> ActionOutcome {
+  package func execute(plan: ActionPlan) async -> ActionOutcome {
     var observedAutomationDenied = false
     var automationDeniedAppleScriptErrorNumber: Int?
     var lastFailure: ActionError?
@@ -37,7 +37,14 @@ public actor ActionExecutor {
 
     for step in plan.steps {
       let start = clock.now
-      let attemptResult = await execute(step.method)
+      let attemptResult: ActionResult
+      if let validationFailure = validationFailure(for: step.method) {
+        attemptResult = validationFailure
+      } else if let permissionFailure = await permissionFailure(for: step.method) {
+        attemptResult = permissionFailure
+      } else {
+        attemptResult = await execute(step.method)
+      }
       let duration = clock.now - start
       attempts.append(.init(step: step, result: attemptResult, duration: duration))
 
@@ -49,8 +56,9 @@ public actor ActionExecutor {
       case .failure(let error):
         if error.code == .permissionDenied, error.permission == .automation {
           observedAutomationDenied = true
-          automationDeniedAppleScriptErrorNumber =
-            error.appleScriptErrorNumber ?? automationDeniedAppleScriptErrorNumber
+          if let appleScriptErrorNumber = error.appleScriptErrorNumber {
+            automationDeniedAppleScriptErrorNumber = appleScriptErrorNumber
+          }
         }
         lastFailure = error
         continue
@@ -73,8 +81,8 @@ public actor ActionExecutor {
       return await executeKeyEvent(event)
     case .keyEventFromKeyboardShortcut(let shortcut):
       return await executeKeyboardShortcut(shortcut)
-    case .appleScript(let source, let requiresSystemEvents):
-      return await runAppleScript(source, requiresSystemEvents: requiresSystemEvents)
+    case .appleScript(let source, let launchesSystemEvents, _):
+      return await runAppleScript(source, launchesSystemEvents: launchesSystemEvents)
     case .openURL(let value):
       return await executeOpenURL(value)
     case .openFolder(let value):
@@ -92,5 +100,38 @@ public actor ActionExecutor {
     case .windowing(let execution):
       return await executeWindowing(execution)
     }
+  }
+
+  private func validationFailure(for method: ActionMethod) -> ActionResult? {
+    guard case .keyEventFromKeyboardShortcut(let shortcut) = method else {
+      return nil
+    }
+    guard KeyboardShortcutParser.parse(shortcut) == nil else {
+      return nil
+    }
+    return invalidInputResult("Failed to parse keyboard shortcut")
+  }
+
+  private func permissionFailure(for method: ActionMethod) async -> ActionResult? {
+    for permission in method.requiredPermissions.canonicalCodableOrder {
+      let isReady: Bool
+      switch permission {
+      case .accessibility:
+        isReady = await configuration.permissions.ensureAccessibility()
+      case .automation:
+        isReady = await configuration.permissions.ensureAutomation()
+      case .screenRecording:
+        isReady = dependencies.screenCaptureAccessChecker.hasAccess()
+      }
+
+      guard !isReady else { continue }
+      let result = permissionDeniedResult(permission)
+      if permission == .screenRecording {
+        await configuration.permissions.onScreenRecordingRequired()
+      }
+      return result
+    }
+
+    return nil
   }
 }

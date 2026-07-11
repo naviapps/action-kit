@@ -1,12 +1,12 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionPreflightWorkspaceTests: XCTestCase {
   func testWorkspaceActionsUseExpectedExecutionMethods() {
     let cases: [(action: Action, method: ActionMethod)] = [
       (.openURL("https://example.com"), .openURL("https://example.com")),
-      (.openFolder("/tmp"), .openFolder("/tmp")),
+      (.openFolder("/Applications"), .openFolder("/Applications")),
       (.launchApplication("com.example.App"), .launchApplication("com.example.App")),
       (.runShortcut("Daily"), .runShortcut("Daily")),
     ]
@@ -27,12 +27,6 @@ final class ActionPreflightWorkspaceTests: XCTestCase {
     for expectation in cases {
       assertWorkspaceMethod(for: expectation.action, equals: expectation.method)
     }
-  }
-
-  func testWorkspacePlanDoesNotHandleOtherActions() {
-    XCTAssertNil(ActionPreflight.workspacePlan(for: .copy))
-    XCTAssertNil(ActionPreflight.workspacePlan(for: .hideFrontmostApplication))
-    XCTAssertNil(ActionPreflight.workspacePlan(for: .keyboardShortcut("cmd+c")))
   }
 
   private func assertWorkspaceMethod(

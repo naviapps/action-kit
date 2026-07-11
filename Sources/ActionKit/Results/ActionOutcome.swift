@@ -3,16 +3,23 @@ public struct ActionOutcome: Codable, Sendable, Equatable, Hashable {
   /// The ordered execution attempts recorded while producing the final result.
   public let attempts: [ActionAttempt]
 
-  /// Creates an action outcome from ordered execution attempts.
-  ///
-  /// - Parameter attempts: The ordered attempts recorded during execution.
-  public init(attempts: [ActionAttempt]) {
-    self.attempts = attempts
+  package init(attempts: [ActionAttempt]) {
+    if attempts.isEmpty {
+      self.attempts = [
+        .init(
+          requiredPermissions: [],
+          isFallback: false,
+          result: .failure(.internalError("No execution attempts were recorded"))
+        )
+      ]
+    } else {
+      self.attempts = attempts
+    }
   }
 
-  /// The last attempt result, or an internal error when no attempts were recorded.
+  /// The last attempt result.
   public var finalResult: ActionResult {
-    attempts.last?.result ?? .failure(.internalError("No execution attempts were recorded"))
+    attempts[attempts.index(before: attempts.endIndex)].result
   }
 
   /// The last successful attempt, if any.
@@ -34,8 +41,19 @@ extension ActionOutcome {
 
   /// Decodes an action outcome and rejects payloads whose final result conflicts with attempts.
   public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(
+      allowed: [CodingKeys.finalResult, .attempts],
+      debugName: "ActionOutcome"
+    )
     let container = try decoder.container(keyedBy: CodingKeys.self)
     attempts = try container.decode([ActionAttempt].self, forKey: .attempts)
+    guard !attempts.isEmpty else {
+      throw DecodingError.dataCorruptedError(
+        forKey: .attempts,
+        in: container,
+        debugDescription: "attempts must contain at least one recorded action attempt."
+      )
+    }
     let decodedFinalResult = try container.decode(ActionResult.self, forKey: .finalResult)
     guard decodedFinalResult == finalResult else {
       throw DecodingError.dataCorruptedError(

@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionPreflightFrontmostApplicationTests: XCTestCase {
   func testFrontmostApplicationActionsUseFrontmostApplicationMethods() {
@@ -16,11 +16,5 @@ final class ActionPreflightFrontmostApplicationTests: XCTestCase {
       XCTAssertEqual(plan.steps.first?.requiredPermissions, [])
       XCTAssertEqual(plan.permissionRequirements, .init(primary: [], fallback: []))
     }
-  }
-
-  func testFrontmostApplicationPlanDoesNotHandleOtherActions() {
-    XCTAssertNil(ActionPreflight.frontmostApplicationPlan(for: .copy))
-    XCTAssertNil(
-      ActionPreflight.frontmostApplicationPlan(for: .launchApplication("com.example.App")))
   }
 }

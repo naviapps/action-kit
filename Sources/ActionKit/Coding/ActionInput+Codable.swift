@@ -6,6 +6,7 @@ extension ActionInput {
 
   /// Decodes an action input from its structural shape and value payload.
   public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(allowed: [CodingKeys.shape, .value], debugName: "ActionInput")
     let container = try decoder.container(keyedBy: CodingKeys.self)
     let shape = try container.decode(ActionInputShape.self, forKey: .shape)
 

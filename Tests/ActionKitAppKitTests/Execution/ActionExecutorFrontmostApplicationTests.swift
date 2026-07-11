@@ -1,7 +1,7 @@
 import XCTest
 
-@testable import ActionKit
-@testable import ActionKitAppKit
+import ActionKit
+import ActionKitAppKit
 
 final class ActionExecutorFrontmostApplicationTests: XCTestCase {
   func testHideFrontmostReturnsSkippedWhenNoApp() async {

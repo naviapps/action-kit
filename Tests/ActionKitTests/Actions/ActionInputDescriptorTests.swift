@@ -1,17 +1,16 @@
 import XCTest
 
-@testable import ActionKit
+import ActionKit
 
 final class ActionInputDescriptorTests: XCTestCase {
-  func testInputDescriptorsMatchInputShapes() {
+  func testInputDescriptorsExposeRequiredInputFromShape() {
     for kind in ActionKind.allCases {
-      XCTAssertEqual(kind.inputDescriptor.shape, kind.inputShape)
-      XCTAssertEqual(kind.inputDescriptor.requiresInput, kind.inputShape != .none)
+      XCTAssertEqual(kind.inputDescriptor.requiresInput, kind.inputDescriptor.shape != .none)
     }
   }
 
   func testInputFreeActionsHaveNoParameterMetadata() {
-    for kind in ActionKind.allCases where kind.inputShape == .none {
+    for kind in ActionKind.allCases where kind.inputDescriptor.shape == .none {
       let descriptor = kind.inputDescriptor
 
       XCTAssertEqual(descriptor.shape, .none, "\(kind) should not require input")
@@ -21,10 +20,10 @@ final class ActionInputDescriptorTests: XCTestCase {
   }
 
   func testInputDescriptorsForInputRequiringKinds() {
-    let descriptors = Dictionary(
+    let descriptors: [ActionKind: ActionInputDescriptor?] = Dictionary(
       uniqueKeysWithValues: ActionKind.allCases
-        .filter { $0.inputShape != .none }
-        .map { ($0, $0.inputDescriptor) }
+        .filter { $0.inputDescriptor.shape != .none }
+        .map { ($0, Optional($0.inputDescriptor)) }
     )
 
     XCTAssertEqual(
@@ -58,13 +57,15 @@ final class ActionInputDescriptorTests: XCTestCase {
           shape: .string,
           parameterName: "folder",
           parameterDescription: "Folder path to open.",
-          exampleInput: .string("/Users/example/Documents")
+          exampleInput: .string("/Applications")
         ),
         .windowPlacement: Self.descriptor(
           shape: .windowPlacement,
           parameterName: "request",
           parameterDescription: "Focused-window placement request.",
-          exampleInput: .windowPlacement(.init(placement: .leftHalf))
+          exampleInput: .windowPlacement(
+            .init(
+              placement: .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1)))
         ),
         .windowMove: Self.descriptor(
           shape: .windowMove,
@@ -77,7 +78,7 @@ final class ActionInputDescriptorTests: XCTestCase {
   }
 
   func testExampleInputsCreateActionsForTheirKinds() {
-    for kind in ActionKind.allCases where kind.inputShape != .none {
+    for kind in ActionKind.allCases where kind.inputDescriptor.shape != .none {
       let descriptor = kind.inputDescriptor
       guard let exampleInput = descriptor.exampleInput else {
         XCTFail("Missing parameter metadata for \(kind)")
@@ -85,7 +86,8 @@ final class ActionInputDescriptorTests: XCTestCase {
       }
 
       XCTAssertEqual(exampleInput.shape, descriptor.shape)
-      XCTAssertNotNil(kind.action(input: exampleInput), "\(kind) should accept its example input")
+      XCTAssertNotNil(
+        kind.makeAction(input: exampleInput), "\(kind) should accept its example input")
     }
   }
 
@@ -160,7 +162,7 @@ final class ActionInputDescriptorTests: XCTestCase {
     XCTAssertEqual(try JSONDecoder().decode(ActionInputDescriptor.self, from: data), descriptor)
   }
 
-  func testUsesStableCodableShape() throws {
+  func testUsesCanonicalCodableShape() throws {
     let descriptor = ActionKind.openURL.inputDescriptor
     let data = try JSONEncoder().encode(descriptor)
     let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -266,13 +268,13 @@ final class ActionInputDescriptorTests: XCTestCase {
   func testRejectsMismatchedExampleInputWhenDecoding() {
     let data = """
       {
-        "shape": "windowPlacement",
+        "shape": "window-placement",
         "parameter": {
           "name": "request",
           "description": "Focused-window placement request.",
           "exampleInput": {
             "shape": "string",
-            "value": "left-half"
+            "value": "window placement"
           }
         }
       }
@@ -299,10 +301,32 @@ final class ActionInputDescriptorTests: XCTestCase {
     XCTAssertThrowsError(try JSONDecoder().decode(ActionInputDescriptor.self, from: data))
   }
 
+  func testRejectsNullParameterMetadataForInputFreeDescriptorWhenDecoding() {
+    let data = """
+      {
+        "shape": "none",
+        "parameter": null
+      }
+      """.data(using: .utf8)!
+
+    XCTAssertThrowsError(try JSONDecoder().decode(ActionInputDescriptor.self, from: data))
+  }
+
   func testRejectsIncompleteRequiredInputDescriptorWhenDecoding() {
     let data = """
       {
         "shape": "string"
+      }
+      """.data(using: .utf8)!
+
+    XCTAssertThrowsError(try JSONDecoder().decode(ActionInputDescriptor.self, from: data))
+  }
+
+  func testRejectsUnknownDescriptorFieldsWhenDecoding() {
+    let data = """
+      {
+        "shape": "none",
+        "metadata": {}
       }
       """.data(using: .utf8)!
 
@@ -324,12 +348,28 @@ final class ActionInputDescriptorTests: XCTestCase {
     XCTAssertThrowsError(try JSONDecoder().decode(ActionInputParameter.self, from: data))
   }
 
+  func testRejectsUnknownParameterFieldsWhenDecoding() {
+    let data = """
+      {
+        "name": "url",
+        "description": "URL string to open.",
+        "exampleInput": {
+          "shape": "string",
+          "value": "https://example.com"
+        },
+        "metadata": {}
+      }
+      """.data(using: .utf8)!
+
+    XCTAssertThrowsError(try JSONDecoder().decode(ActionInputParameter.self, from: data))
+  }
+
   private static func descriptor(
     shape: ActionInputShape,
     parameterName: String,
     parameterDescription: String,
     exampleInput: ActionInput
-  ) -> ActionInputDescriptor {
+  ) -> ActionInputDescriptor? {
     guard
       let parameter = ActionInputParameter(
         name: parameterName,
@@ -338,7 +378,7 @@ final class ActionInputDescriptorTests: XCTestCase {
       ),
       let descriptor = ActionInputDescriptor(shape: shape, parameter: parameter)
     else {
-      fatalError("Test descriptor fixture must be valid.")
+      return nil
     }
 
     return descriptor

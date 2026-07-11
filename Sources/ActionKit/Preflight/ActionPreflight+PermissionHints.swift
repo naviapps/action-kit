@@ -15,12 +15,12 @@ extension ActionPreflight {
     permissionHints(for: plan(forKind: kind))
   }
 
-  package static func permissionHints(for plan: ActionPlan) -> [ActionPermissionHint] {
+  static func permissionHints(for plan: ActionPlan) -> [ActionPermissionHint] {
     var hints: [ActionPermissionHint] = []
     var seenPermissions: Set<ActionPermission> = []
 
     for step in plan.steps {
-      for permission in step.requiredPermissions.stableCodableOrder {
+      for permission in step.requiredPermissions.canonicalCodableOrder {
         guard seenPermissions.insert(permission).inserted else {
           continue
         }

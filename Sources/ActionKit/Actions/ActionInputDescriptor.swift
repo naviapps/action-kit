@@ -4,7 +4,7 @@
 /// ``Action`` exists.
 public struct ActionInputDescriptor: Equatable, Hashable, Sendable {
   /// Input-free descriptor used by action kinds that do not require host-supplied values.
-  public static let none = ActionInputDescriptor(uncheckedShape: .none, parameter: nil)
+  public static let none = ActionInputDescriptor(canonicalShape: .none, parameter: nil)
 
   /// The structural shape of the required input.
   public let shape: ActionInputShape
@@ -39,7 +39,7 @@ public struct ActionInputDescriptor: Equatable, Hashable, Sendable {
         return nil
       }
 
-      self.init(uncheckedShape: shape, parameter: nil)
+      self.init(canonicalShape: shape, parameter: nil)
       return
     }
 
@@ -47,11 +47,11 @@ public struct ActionInputDescriptor: Equatable, Hashable, Sendable {
       return nil
     }
 
-    self.init(uncheckedShape: shape, parameter: parameter)
+    self.init(canonicalShape: shape, parameter: parameter)
   }
 
-  private init(
-    uncheckedShape shape: ActionInputShape,
+  init(
+    canonicalShape shape: ActionInputShape,
     parameter: ActionInputParameter?
   ) {
     self.shape = shape
@@ -67,9 +67,16 @@ extension ActionInputDescriptor: Codable {
 
   /// Decodes an input descriptor and rejects values that do not match descriptor invariants.
   public init(from decoder: Decoder) throws {
+    try decoder.rejectUnknownKeys(
+      allowed: [CodingKeys.shape, .parameter],
+      debugName: "ActionInputDescriptor"
+    )
     let container = try decoder.container(keyedBy: CodingKeys.self)
     let shape = try container.decode(ActionInputShape.self, forKey: .shape)
-    let parameter = try container.decodeIfPresent(ActionInputParameter.self, forKey: .parameter)
+    let parameter = try container.decodeIfPresentRejectingNull(
+      ActionInputParameter.self,
+      forKey: .parameter
+    )
 
     guard
       let descriptor = Self(shape: shape, parameter: parameter)
@@ -77,7 +84,7 @@ extension ActionInputDescriptor: Codable {
       throw DecodingError.dataCorruptedError(
         forKey: .parameter,
         in: container,
-        debugDescription: "Descriptor metadata must be complete and shape-compatible."
+        debugDescription: "Descriptor metadata must be complete and shape-matched."
       )
     }
 
