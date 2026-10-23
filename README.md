@@ -334,3 +334,27 @@ Report vulnerabilities privately. See [SECURITY.md](SECURITY.md).
 ## License
 
 ActionKit is released under the MIT License. See [LICENSE](LICENSE).
+
+
+## Shortcuts catalog
+
+The catalog API is currently available on `main`; pin its revision or branch
+until the next tagged release. It is part of `ActionKitAppKit`, not the
+platform-model target.
+
+```swift
+import ActionKitAppKit
+
+let catalog = ShortcutsCatalog(timeout: .seconds(10), maximumOutputByteCount: 1_048_576)
+let names = try await catalog.shortcutNames()
+```
+
+This invokes the system's `shortcuts list` command and never runs a shortcut.
+It returns sorted, distinct, case-preserving names without treating `Name` or
+leading dashes as table headers. Stdout is bounded, stderr is discarded, and
+errors contain no names, paths, or raw output. Deadline/output failures and task
+cancellation stop and reap the child process; `CancellationError` is distinct
+from `ShortcutsCatalogError`. Invalid timeouts use ten seconds and output limits
+below one use one byte. Hosts own pickers, caching, permission guidance and logs.
+See [Apple's command-line guide](https://support.apple.com/guide/shortcuts-mac/apd455c82f02/mac)
+for the system command's behavior.

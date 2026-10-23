@@ -45,3 +45,12 @@ Security-sensitive areas include:
 ActionKit does not collect, transmit, or persist action data by itself. Host applications are
 responsible for permission onboarding, logging, telemetry, privacy disclosures, and deciding which
 actions are available to users.
+
+
+## Shortcuts catalog listing
+
+`ShortcutsCatalog` reads shortcut names from the system CLI only when requested.
+It does not run shortcuts, request permissions, cache names, log raw output, or
+transmit data. Stdout has a host-configured byte limit; stderr and partial output
+are discarded on failure. Errors contain only typed categories. Treat returned
+names as user data; hosts own their UI, caching and diagnostic disclosure.

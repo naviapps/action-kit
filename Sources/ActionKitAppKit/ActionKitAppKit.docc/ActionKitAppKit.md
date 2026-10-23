@@ -46,6 +46,15 @@ library. Apps that use `PermissionsKit` can call
 request supported permissions, or open System Settings while keeping ActionKit's permission model
 action-specific.
 
+## Shortcuts Catalog
+
+``ShortcutsCatalog`` lists system shortcut names with bounded process I/O. It
+never executes a shortcut. Hosts choose deadline/output limits, own picker state
+and decide whether names may appear in diagnostics. Cancellation throws
+`CancellationError`; other failures use ``ShortcutsCatalogError`` without raw
+output. The child process is stopped and reaped before cancellation or failure
+returns. The default limit is one MiB and the default timeout is ten seconds.
+
 ## Topics
 
 ### Execution
@@ -57,3 +66,10 @@ action-specific.
 - ``ActionExecutorConfiguration/Permissions``
 - ``ActionExecutorConfiguration/Permissions/init(ensureAccessibility:ensureAutomation:onAutomationDenied:onScreenRecordingRequired:)``
 - ``ActionExecutorConfiguration/LogLevel``
+
+### Shortcuts Catalog
+
+- ``ShortcutsCatalog``
+- ``ShortcutsCatalog/init(timeout:maximumOutputByteCount:)``
+- ``ShortcutsCatalog/shortcutNames()``
+- ``ShortcutsCatalogError``

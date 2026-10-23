@@ -6,7 +6,12 @@ Released versions follow semantic versioning.
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- Added `ShortcutsCatalog` to ActionKitAppKit for bounded, cancellable system
+  shortcut-name listing without executing shortcuts or retaining raw stderr.
+- Added typed catalog failures and case-preserving name decoding, with injected
+  executable fixtures covering process I/O, limits, deadlines and cancellation.
 
 ## [2.0.0] - 2026-07-12
 
